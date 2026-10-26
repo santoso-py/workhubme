@@ -25,7 +25,7 @@ const isDimension = (n) => Number.isInteger(n) && n >= 1 && n <= MAX_DIMENSION;
 // getWebContents() returns the terminal view's webContents. Every handler checks that the
 // message came from exactly that page's main frame, because anything that can write to the
 // pty can run commands as the user.
-function registerTerminal(getWebContents) {
+function registerTerminal(getWebContents, tr = (key, params) => `${key} ${JSON.stringify(params)}`) {
   let proc = null;
   let pending = '';
   let flushTimer = null;
@@ -71,7 +71,7 @@ function registerTerminal(getWebContents) {
       start(size.cols, size.rows);
     } catch (error) {
       const wc = getWebContents();
-      if (wc) wc.send('terminal:data', `\r\n[terminal failed to start: ${error.message}]\r\n`);
+      if (wc) wc.send('terminal:data', `\r\n${tr('term.failed', { message: error.message })}\r\n`);
     }
   });
   ipcMain.on('terminal:input', (event, data) => {

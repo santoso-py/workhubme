@@ -12,6 +12,7 @@ This is a small, early project maintained in spare time. Reports are handled on 
 - A way to bypass a tab's allowed-host rules (navigation, redirects, popups)
 - A way to send input to the terminal from anything other than the terminal page
 - A `services.json` that makes a tab do more than the validation intends
+- Any way to make the swipe message (`swipe:wheel`) do more than switch tabs, or to send it from anything other than a website tab
 - Anything that makes the app send data off the machine on its own
 
 ## What is not

@@ -1,6 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #eceef1; user-select: none; font: 14px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; }
 
@@ -53,22 +53,43 @@
   .plus svg { width: 16px; height: 16px; stroke: #2b2d33; stroke-width: 2; stroke-linecap: round; fill: none; }
 
   /* Shown when there are no tabs yet. */
-  .empty { position: fixed; left: 50%; top: calc(50% + 26px); transform: translate(-50%, -50%); width: 360px; text-align: center; display: none; }
+  .empty { position: fixed; left: 50%; top: calc(50% + 26px); transform: translate(-50%, -50%); width: 460px; text-align: center; display: none; }
   .empty.on { display: block; }
-  .empty h1 { margin: 0 0 8px; font-size: 20px; font-weight: 650; color: #1d1d1f; }
-  .empty p { margin: 0 0 18px; line-height: 1.5; color: #6b6d75; }
-  .empty button { height: 38px; padding: 0 22px; border: 0; border-radius: 19px; background: #1d1d1f; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .langs { display: flex; justify-content: center; gap: 6px; margin: 0 0 22px; }
+  .empty .langs button { height: 28px; padding: 0 13px; margin: 0; border: 0; border-radius: 14px; background: rgba(255, 255, 255, .55); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .07); color: #4a4c54; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; }
+  .empty .langs button:hover { background: rgba(255, 255, 255, .9); }
+  .empty .langs button.on { background: #fff; color: #1d1d1f; font-weight: 600; box-shadow: 0 1px 4px rgba(0, 0, 0, .14), inset 0 0 0 1px rgba(0, 0, 0, .05); }
+  .empty h1 { margin: 0 0 8px; font-size: 22px; font-weight: 650; color: #1d1d1f; }
+  .empty p { margin: 0 0 12px; line-height: 1.5; color: #6b6d75; }
+  .empty p.what { color: #3c3e45; }
+  .empty button { height: 38px; padding: 0 22px; margin-top: 6px; border: 0; border-radius: 19px; background: #1d1d1f; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   .empty button:hover { background: #34353b; }
+
+  .guide { margin: 26px auto 0; padding: 14px 18px 12px; text-align: left; border-radius: 16px; background: rgba(255, 255, 255, .62); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .8), 0 6px 20px rgba(30, 34, 50, .06); }
+  .guide h2 { margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: #8a8c94; }
+  .guide .row { display: flex; align-items: center; gap: 10px; padding: 5px 0; color: #2b2d33; font-size: 13px; }
+  .guide .keys { display: flex; gap: 4px; align-items: center; flex: none; min-width: 168px; }
+  .guide kbd { min-width: 18px; padding: 2px 7px; border-radius: 7px; background: #fff; box-shadow: 0 1px 1px rgba(0, 0, 0, .10), inset 0 0 0 1px rgba(0, 0, 0, .08); font: 12px ui-monospace, 'SF Mono', Menlo, monospace; text-align: center; color: #1d1d1f; }
+  .guide .then { color: #9a9ca4; font-size: 11px; }
+  .guide p.note { margin: 8px 0 0; padding-top: 8px; border-top: 1px solid rgba(0, 0, 0, .07); font-size: 12px; line-height: 1.45; color: #6b6d75; }
 </style>
 <div class="strip" id="strip">
   <div class="capsule" id="capsule"></div>
-  <button class="plus" id="plus" title="Tambah tab" aria-label="Tambah tab"><svg viewBox="0 0 16 16"><path d="M8 2.5v11M2.5 8h11"/></svg></button>
+  <button class="plus" id="plus"><svg viewBox="0 0 16 16"><path d="M8 2.5v11M2.5 8h11"/></svg></button>
 </div>
 <div class="empty" id="empty">
-  <h1>Belum ada tab</h1>
-  <p>Tambahkan situs yang sering Anda buka. Setiap tab punya sesi login sendiri dan hanya boleh membuka alamatnya sendiri.</p>
-  <button id="emptyAdd">Tambah tab</button>
+  <div class="langs" id="langs"></div>
+  <h1 id="emptyTitle"></h1>
+  <p class="what" id="emptyWhat"></p>
+  <p id="emptyBody"></p>
+  <button id="emptyAdd"></button>
+  <div class="guide">
+    <h2 id="guideTitle"></h2>
+    <div id="guideRows"></div>
+    <p class="note" id="guideNote"></p>
+  </div>
 </div>
+<script src="i18n.js"></script>
 <script>
   // Slanted edge, drawn once as a fixed-width cap so the curve never stretches with the tab.
   const RIGHT_CAP = '<svg viewBox="0 0 64 40" aria-hidden="true"><path d="M0 0 H14 C24 0 28 3 32 9 L45 31 C49 37 54 40 64 40 H0 Z"/></svg>';
@@ -80,6 +101,67 @@
 
   let services = [];
   let state = null;
+  let lang = 'en';
+  const tr = (key, params) => I18N.t(lang, key, params);
+
+  // Quick guide rows: key chips on the left, what they do on the right.
+  const GUIDE = [
+    { keys: ['+'], text: 'guide.add' },
+    { keys: ['Cmd+R', '1-9'], text: 'guide.switch', then: true },
+    { keys: ['Cmd+R', 's', '1-9'], text: 'guide.split', then: true },
+    { keys: ['Ctrl', 'Tab'], text: 'guide.switcher', hold: true },
+    { keys: ['Cmd+,'], text: 'guide.settings' },
+  ];
+
+  function renderLangs() {
+    document.getElementById('langs').replaceChildren(...Object.entries(I18N.LANGS).map(([code, name]) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.lang = code;
+      button.textContent = name;
+      button.className = code === lang ? 'on' : '';
+      button.addEventListener('click', () => hub.setLanguage(code));
+      return button;
+    }));
+  }
+
+  function renderGuide() {
+    document.getElementById('guideTitle').textContent = tr('guide.title');
+    document.getElementById('guideNote').textContent = tr('guide.note');
+    document.getElementById('guideRows').replaceChildren(...GUIDE.map((item) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const keys = document.createElement('span');
+      keys.className = 'keys';
+      item.keys.forEach((k, i) => {
+        if (i > 0) {
+          const sep = document.createElement('span');
+          sep.className = 'then';
+          sep.textContent = item.hold ? '+' : '›';
+          keys.append(sep);
+        }
+        const kbd = document.createElement('kbd');
+        kbd.textContent = k;
+        keys.append(kbd);
+      });
+      const text = document.createElement('span');
+      text.textContent = tr(item.text);
+      row.append(keys, text);
+      return row;
+    }));
+  }
+
+  function applyLang() {
+    const plus = document.getElementById('plus');
+    plus.title = tr('tab.add');
+    plus.setAttribute('aria-label', tr('tab.add'));
+    document.getElementById('emptyTitle').textContent = tr('empty.title');
+    document.getElementById('emptyWhat').textContent = tr('empty.what');
+    document.getElementById('emptyBody').textContent = tr('empty.body');
+    renderGuide();
+    renderLangs();
+    document.getElementById('emptyAdd').textContent = tr('tab.add');
+  }
   const strip = document.getElementById('strip');
   const capsule = document.getElementById('capsule');
 
@@ -129,6 +211,9 @@
       return tab;
     }));
   }
+  hub.lang().then((l) => { lang = l || 'en'; applyLang(); });
+  hub.onLang((l) => { lang = l; applyLang(); });
+  applyLang();
   hub.onServices((data) => { services = data; render(); });
   hub.onState((data) => { state = data; render(); });
 </script>

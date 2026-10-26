@@ -16,12 +16,15 @@ terminal.open(document.getElementById('term'));
 fit.fit();
 
 let exited = false;
+let lang = 'en';
+term.lang().then((l) => { lang = l || 'en'; });
+term.onLang((l) => { lang = l; });
 const size = () => ({ cols: terminal.cols, rows: terminal.rows });
 
 term.onData((data) => terminal.write(data));
 term.onExit((code) => {
   exited = true;
-  terminal.write(`\r\n[process exited with code ${code}. Press Enter to start a new shell]\r\n`);
+  terminal.write(`\r\n${I18N.t(lang, 'term.exited', { code })}\r\n`);
 });
 terminal.onData((data) => {
   if (exited) {

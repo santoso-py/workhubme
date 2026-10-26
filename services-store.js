@@ -12,20 +12,29 @@ const MAX_EXTRA_HOSTS = 10;
 // signed in through Google share a single login.
 const GOOGLE = { hosts: ['google.com', 'gstatic.com', 'googleusercontent.com', 'youtube.com'], partition: 'google' };
 
+// A validation failure with a stable code; the main process turns it into a message in the user's language.
+class UserError extends Error {
+  constructor(code, params = {}) {
+    super(code);
+    this.code = code;
+    this.params = params;
+  }
+}
+
 const isHostname = (value) => typeof value === 'string' && HOSTNAME.test(value);
 
 function parseHttpsUrl(raw) {
   let text = String(raw ?? '').trim();
-  if (!text) throw new Error('URL wajib diisi.');
+  if (!text) throw new UserError('urlRequired');
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) text = `https://${text}`;
   let url;
   try {
     url = new URL(text);
   } catch {
-    throw new Error('URL tidak valid.');
+    throw new UserError('urlInvalid');
   }
-  if (url.protocol !== 'https:') throw new Error('Hanya alamat https:// yang didukung.');
-  if (!isHostname(url.hostname)) throw new Error('Gunakan nama domain (bukan alamat IP atau localhost).');
+  if (url.protocol !== 'https:') throw new UserError('httpsOnly');
+  if (!isHostname(url.hostname)) throw new UserError('domainOnly');
   return url;
 }
 
@@ -39,17 +48,17 @@ function uniqueId(base, existing) {
   return `${base}-${n}`;
 }
 
-// Turns the add-site form into a service entry, or throws an Error with a message for the user.
+// Turns the add-site form into a service entry, or throws a UserError.
 function createEntry(form, existing) {
-  if (!form || typeof form !== 'object') throw new Error('Data tidak valid.');
+  if (!form || typeof form !== 'object') throw new UserError('dataInvalid');
   const name = String(form.name ?? '').trim();
-  if (!name) throw new Error('Nama wajib diisi.');
-  if (name.length > MAX_NAME) throw new Error(`Nama maksimal ${MAX_NAME} karakter.`);
+  if (!name) throw new UserError('nameRequired');
+  if (name.length > MAX_NAME) throw new UserError('nameTooLong', { max: MAX_NAME });
 
   const color = typeof form.color === 'string' && /^#[0-9a-f]{6}$/i.test(form.color) ? form.color : COLORS[existing.length % COLORS.length];
 
   if (form.type === 'terminal') {
-    if (existing.some((s) => s.type === 'terminal')) throw new Error('Terminal sudah ada. Hanya satu terminal yang didukung.');
+    if (existing.some((s) => s.type === 'terminal')) throw new UserError('terminalExists');
     return { id: uniqueId('terminal', existing), name, type: 'terminal', icon: 'terminal.svg', color };
   }
 
@@ -58,9 +67,9 @@ function createEntry(form, existing) {
     .split(/[\s,]+/)
     .map((h) => h.trim().toLowerCase())
     .filter(Boolean);
-  if (extras.length > MAX_EXTRA_HOSTS) throw new Error(`Domain tambahan maksimal ${MAX_EXTRA_HOSTS}.`);
+  if (extras.length > MAX_EXTRA_HOSTS) throw new UserError('extraTooMany', { max: MAX_EXTRA_HOSTS });
   const bad = extras.find((h) => !isHostname(h));
-  if (bad) throw new Error(`Domain tambahan tidak valid: ${bad}`);
+  if (bad) throw new UserError('extraInvalid', { host: bad });
 
   const googleLogin = form.googleLogin === true;
   const hosts = [...new Set([url.hostname.toLowerCase(), ...extras, ...(googleLogin ? GOOGLE.hosts : [])])];
@@ -117,4 +126,4 @@ function save(file, list) {
   fs.renameSync(tmp, file); // replace in one step so a crash cannot leave half a file
 }
 
-module.exports = { createEntry, load, save, GOOGLE };
+module.exports = { createEntry, load, save, GOOGLE, UserError };

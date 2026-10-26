@@ -3,6 +3,9 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { registerTerminal } = require('./terminal');
 const store = require('./services-store');
+const settingsStore = require('./settings-store');
+const I18N = require('./i18n');
+const { createSwipeDetector } = require('./gesture');
 
 // The user's tabs, read from userData/services.json once the app is ready. Mutated in place.
 const services = [];
@@ -14,7 +17,7 @@ const RADIUS = 12; // service view corners
 const SLIDE_MS = 260;
 const BG = '#eceef1';
 const PREFIX_TIMEOUT_MS = 4000;
-const OVERLAY_SIZE = { width: 560, height: 150 };
+const OVERLAY_SIZE = { width: 560, height: 172 };
 
 let chromeUA;
 let win;
@@ -25,6 +28,13 @@ let primaryId = null; // null while there are no tabs
 let secondaryId = null;
 let activeId = null; // pane that last had focus; back/reload/home act on it
 let tabsVisible = true;
+
+// Preferences (settings.json) and the active UI language. `lang` follows the system locale until the user picks one.
+let settings = { ...settingsStore.DEFAULTS };
+let lang = 'en';
+const T = (key, params) => I18N.t(lang, key, params);
+const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
+const DEBUG_SWIPE = process.env.WORKHUB_DEBUG_SWIPE === '1';
 
 let prefixState = null; // null | 'prefix' | 'split'
 let prefixTimer;
@@ -126,11 +136,13 @@ function createServiceView(service) {
   const view = new WebContentsView({
     webPreferences: {
       session: ses,
+      preload: path.join(__dirname, 'wheel-preload.js'), // forwards scroll amounts only, see that file
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
     },
   });
+  websiteContents.add(view.webContents);
 
   // Links outside the service's own hosts open in the default browser.
   view.webContents.setWindowOpenHandler(({ url }) => {
@@ -207,6 +219,39 @@ function slideViews(fromId, toId, target) {
   tick();
 }
 
+// Two-finger swipe moves to the neighbouring tab. It reads wheel events natively (no script is
+// injected into pages) and is off unless the user turns it on in Settings.
+const swipeDetector = createSwipeDetector();
+const websiteContents = new Set(); // webContents of website tabs, the only senders of swipe:wheel
+let wheelSeen = false;
+let debugSwipeLines = 0;
+
+function stepTab(step) {
+  const index = services.findIndex((s) => s.id === primaryId);
+  const next = services[index + step];
+  if (index === -1 || !next) return; // no wrap-around: the ends stay put
+  appendLog('actions.log', `swipe ${step > 0 ? 'next' : 'previous'} ${primaryId} -> ${next.id}`);
+  selectService(next.id, false);
+}
+
+function onWheel(mouse) {
+  if (mouse.type !== 'mouseWheel') return;
+  if (settings.swipe && !wheelSeen) {
+    wheelSeen = true; // proof in actions.log that scroll events reach the app at all
+    appendLog('actions.log', `wheel events are arriving (first: dx=${mouse.deltaX} dy=${mouse.deltaY})`);
+  }
+  if (DEBUG_SWIPE && debugSwipeLines < 400) {
+    debugSwipeLines += 1;
+    appendLog('swipe-debug.log', `dx=${mouse.deltaX} dy=${mouse.deltaY} ticksX=${mouse.wheelTicksX} precise=${mouse.hasPreciseScrollingDeltas}`);
+  }
+  if (!settings.swipe || sheets.some((s) => s.open)) return;
+  const direction = swipeDetector.feed(mouse.deltaX ?? 0, mouse.deltaY ?? 0, Date.now());
+  if (!direction) return;
+  // Negative x is the fingers moving right with natural scrolling: that goes to the next tab.
+  const toNext = (direction === 'left') !== settings.swipeInvert;
+  stepTab(toNext ? 1 : -1);
+}
+
 function layout({ slide } = {}) {
   finishSlide();
   const { width, height } = win.getContentBounds();
@@ -240,7 +285,7 @@ function layout({ slide } = {}) {
     y: height - OVERLAY_SIZE.height - 24,
     ...OVERLAY_SIZE,
   });
-  if (sheet && sheetOpen) sheet.setBounds({ x: 0, y: 0, width, height });
+  for (const s of sheets) if (s.view && s.open) s.view.setBounds({ x: 0, y: 0, width, height });
   chrome.webContents.send('state', { tabsVisible, primaryId, secondaryId });
 }
 
@@ -266,11 +311,11 @@ async function resetSession() {
   const affected = services.filter((s) => (s.partition ?? s.id) === key);
   const { response } = await dialog.showMessageBox(win, {
     type: 'warning',
-    buttons: ['Batal', 'Hapus login'],
+    buttons: [T('reset.cancel'), T('reset.confirm')],
     defaultId: 0,
     cancelId: 0,
-    message: `Hapus login ${affected.map((s) => s.name).join(', ')}?`,
-    detail: 'Cookie dan data situs untuk layanan ini dihapus, lalu halaman dimuat ulang. Layanan dengan sesi lain tidak terpengaruh.',
+    message: T('reset.message', { names: affected.map((s) => s.name).join(', ') }),
+    detail: T('reset.detail'),
   });
   if (response !== 1) return;
   await session.fromPartition(`persist:${key}`).clearStorageData();
@@ -391,7 +436,8 @@ const MODIFIER_KEYS = new Set(['Meta', 'Shift', 'Control', 'Alt']);
 const PREFIX_NAV = { p: 'back', n: 'forward', r: 'reload', h: 'home' };
 
 // tmux-style prefix: Cmd+R, then b (toggle tab bar), s (split, then pick a number),
-// x (close split), 1-9 (switch primary), p/n (back/forward), r (reload), h (home), c (reset login), Esc (cancel).
+// x (close split), 1-9 (switch primary), p/n (back/forward), r (reload), h (home), c (reset login),
+// , (settings), Esc (cancel).
 function handleKey(event, input) {
   // Releasing Ctrl confirms the Ctrl+Tab switcher.
   if (input.type === 'keyUp') {
@@ -449,6 +495,9 @@ function handleKey(event, input) {
   } else if (key === 'c') {
     setPrefix(null);
     resetSession();
+  } else if (key === ',') {
+    setPrefix(null);
+    openSheet(settingsSheet);
   } else if (target) {
     selectService(target.id, false);
     setPrefix(null);
@@ -476,9 +525,7 @@ function createWindow() {
     .replace(/\sElectron\/\S+/, '')
     .replace(new RegExp(`\\s${app.getName()}/\\S+`), '');
 
-  Menu.setApplicationMenu(
-    Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]),
-  );
+  buildMenu();
 
   win = new BaseWindow({
     width: 1400,
@@ -506,7 +553,7 @@ function createWindow() {
     activeId = primaryId;
   }
 
-  terminal = registerTerminal(() => terminalView?.webContents);
+  terminal = registerTerminal(() => terminalView?.webContents, T);
   app.on('before-quit', () => terminal.kill());
 
   // Added last so it stays above the service views.
@@ -535,7 +582,7 @@ function addService(entry) {
   views.set(entry.id, view);
   win.contentView.addChildView(view);
   win.contentView.addChildView(overlay); // keep the overlay above the new view
-  if (sheet) win.contentView.addChildView(sheet);
+  for (const s of sheets) if (s.view) win.contentView.addChildView(s.view);
   store.save(userFile(), services);
   sendServices();
   selectService(entry.id, false);
@@ -551,6 +598,7 @@ function removeService(id) {
     terminalLoaded = false;
   }
   win.contentView.removeChildView(view);
+  websiteContents.delete(view.webContents);
   view.webContents.close();
   views.delete(id);
   services.splice(index, 1);
@@ -567,44 +615,85 @@ function removeService(id) {
   if (primaryId) views.get(primaryId).webContents.focus();
 }
 
-// The add-site form is a sheet over the whole window, created the first time it is needed.
-let sheet = null;
-let sheetOpen = false;
+// Sheets (add-site form, settings) are views over the whole window, created the first time they are needed.
+const makeSheet = (file, preload) => ({ file, preload, view: null, open: false });
+const addSheet = makeSheet('add-site.html', 'sheet-preload.js');
+const settingsSheet = makeSheet('settings.html', 'settings-preload.js');
+const sheets = [addSheet, settingsSheet];
 
-function openSheet() {
-  if (!sheet) {
-    sheet = new WebContentsView({
-      webPreferences: { preload: path.join(__dirname, 'sheet-preload.js'), nodeIntegration: false, contextIsolation: true, sandbox: true },
+function openSheet(target) {
+  for (const other of sheets) if (other !== target && other.open) closeSheet(other, false);
+  if (!target.view) {
+    target.view = new WebContentsView({
+      webPreferences: { preload: path.join(__dirname, target.preload), nodeIntegration: false, contextIsolation: true, sandbox: true },
     });
-    sheet.setBackgroundColor('#00000000');
-    sheet.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-    sheet.webContents.on('will-navigate', (event) => event.preventDefault());
-    sheet.webContents.loadFile('add-site.html');
+    target.view.setBackgroundColor('#00000000');
+    target.view.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    target.view.webContents.on('will-navigate', (event) => event.preventDefault());
+    target.view.webContents.loadFile(target.file);
   }
-  win.contentView.addChildView(sheet); // raises it above everything else
-  sheetOpen = true;
-  sheet.setVisible(true);
+  win.contentView.addChildView(target.view); // raises it above everything else
+  target.open = true;
+  target.view.setVisible(true);
   layout();
-  sheet.webContents.send('sheet:reset');
-  sheet.webContents.focus();
+  target.view.webContents.send('sheet:reset');
+  target.view.webContents.focus();
 }
 
-function closeSheet() {
-  if (!sheet || !sheetOpen) return;
-  sheetOpen = false;
-  sheet.setVisible(false);
-  const view = views.get(activeId);
-  if (view) view.webContents.focus();
+function closeSheet(target, refocus = true) {
+  if (!target.view || !target.open) return;
+  target.open = false;
+  target.view.setVisible(false);
+  if (refocus) views.get(activeId)?.webContents.focus();
 }
 
 function showTabMenu(id) {
   if (!views.has(id)) return;
   Menu.buildFromTemplate([
-    { label: 'Muat ulang', click: () => views.get(id)?.webContents.reload() },
+    { label: T('menu.reload'), click: () => views.get(id)?.webContents.reload() },
     { type: 'separator' },
-    { label: 'Hapus tab', click: () => removeService(id) },
+    { label: T('menu.remove'), click: () => removeService(id) },
   ]).popup();
 }
+
+function buildMenu() {
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      {
+        label: app.name,
+        submenu: [
+          { role: 'about' },
+          { type: 'separator' },
+          { label: T('menu.settings'), accelerator: 'Command+,', click: () => openSheet(settingsSheet) },
+          { type: 'separator' },
+          { role: 'hide' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit' },
+        ],
+      },
+      { role: 'editMenu' },
+      { role: 'windowMenu' },
+    ]),
+  );
+}
+
+// Every UI view that shows text; they all receive the language and its changes.
+const uiViews = () => [chrome, overlay, terminalView, ...sheets.map((s) => s.view)].filter(Boolean);
+
+function applySettings(patch) {
+  settings = settingsStore.merge(settings, patch);
+  settingsStore.save(settingsFile(), settings);
+  lang = settings.language ?? I18N.pick(app.getLocale());
+  buildMenu();
+  for (const view of uiViews()) if (!view.webContents.isDestroyed()) view.webContents.send('lang', lang);
+}
+
+const settingsSnapshot = () => ({ language: lang, languages: I18N.LANGS, swipe: settings.swipe, swipeInvert: settings.swipeInvert });
+
+// Turns a validation failure into a message in the active language.
+const userMessage = (error) => (error instanceof store.UserError ? T(`err.${error.code}`, error.params) : T('err.dataInvalid'));
 
 // Anything that can reach these handlers can add tabs or run a shell, so each one checks the sender.
 const fromView = (view, event) => Boolean(view) && event.sender === view.webContents && event.senderFrame === view.webContents.mainFrame;
@@ -614,27 +703,48 @@ ipcMain.on('select', (event, payload) => {
   if (!fromView(chrome, event) || !payload || typeof payload.id !== 'string') return;
   selectService(payload.id, payload.split === true);
 });
+ipcMain.on('swipe:wheel', (event, dx, dy) => {
+  // Numbers only, from a website tab's own page.
+  if (!websiteContents.has(event.sender) || event.senderFrame !== event.sender.mainFrame) return;
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+  const clamp = (n) => Math.max(-5000, Math.min(5000, n));
+  onWheel({ type: 'mouseWheel', deltaX: clamp(dx), deltaY: clamp(dy) });
+});
 ipcMain.on('ui:add-site', (event) => {
-  if (fromView(chrome, event)) openSheet();
+  if (fromView(chrome, event)) openSheet(addSheet);
+});
+ipcMain.on('ui:set-language', (event, code) => {
+  // The first-run screen lets the user pick the language; settingsStore.merge ignores anything but id/en/ja.
+  if (fromView(chrome, event) && typeof code === 'string') applySettings({ language: code });
 });
 ipcMain.on('tab:context', (event, id) => {
   if (fromView(chrome, event) && typeof id === 'string') showTabMenu(id);
 });
 ipcMain.on('sheet:close', (event) => {
-  if (fromView(sheet, event)) closeSheet();
+  const target = sheets.find((s) => fromView(s.view, event));
+  if (target) closeSheet(target);
 });
 ipcMain.handle('site:add', (event, form) => {
-  if (!fromView(sheet, event)) return { ok: false, error: 'Tidak diizinkan.' };
+  if (!fromView(addSheet.view, event)) return { ok: false, error: T('err.notAllowed') };
   try {
     addService(store.createEntry(form, services));
-    closeSheet();
+    closeSheet(addSheet);
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: error.message };
+    return { ok: false, error: userMessage(error) };
   }
 });
+ipcMain.handle('settings:get', (event) => (fromView(settingsSheet.view, event) ? settingsSnapshot() : null));
+ipcMain.handle('settings:set', (event, patch) => {
+  if (!fromView(settingsSheet.view, event)) return { ok: false };
+  applySettings(patch);
+  return { ok: true, settings: settingsSnapshot() };
+});
+ipcMain.handle('i18n:lang', (event) => (uiViews().some((v) => fromView(v, event)) ? lang : null));
 
 app.whenReady().then(() => {
+  settings = settingsStore.load(settingsFile());
+  lang = settings.language ?? I18N.pick(app.getLocale());
   services.push(...store.load(userFile()));
   recent.push(...services.map((s) => s.id));
   createWindow();
