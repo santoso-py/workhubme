@@ -1,0 +1,5 @@
+node_modules/
+.DS_Store
+*.log
+# the app reads its tab list from userData; keep a stray copy out of commits
+services.json

@@ -1,0 +1,78 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; font: 14px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; color: #1d1d1f; }
+  .dim { position: fixed; inset: 0; background: rgba(28, 30, 38, .30); display: grid; place-items: center; }
+  .card { width: 420px; box-sizing: border-box; padding: 22px 24px 20px; border-radius: 22px; background: rgba(255, 255, 255, .94); box-shadow: 0 24px 60px rgba(0, 0, 0, .28), inset 0 0 0 1px rgba(255, 255, 255, .9); }
+  h1 { margin: 0 0 16px; font-size: 17px; font-weight: 650; }
+  label { display: block; margin: 12px 0 5px; font-size: 12px; font-weight: 600; color: #6b6d75; }
+  input[type=text] { width: 100%; box-sizing: border-box; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(0, 0, 0, .14); background: #fff; font: inherit; outline: none; }
+  input[type=text]:focus { border-color: #0a84ff; box-shadow: 0 0 0 3px rgba(10, 132, 255, .22); }
+  .seg { display: flex; padding: 3px; border-radius: 11px; background: #eceef3; }
+  .seg button { flex: 1; height: 30px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-weight: 500; color: #4a4c54; cursor: pointer; }
+  .seg button.on { background: #fff; color: #1d1d1f; font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, .14); }
+  .check { display: flex; gap: 8px; align-items: flex-start; margin-top: 14px; font-size: 13px; font-weight: 400; color: #2b2d33; }
+  .check input { margin-top: 2px; }
+  .hint { margin: 4px 0 0; font-size: 11.5px; color: #8a8c94; line-height: 1.4; }
+  .error { min-height: 18px; margin: 12px 0 0; font-size: 12.5px; color: #c4281c; }
+  .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+  .actions button { height: 34px; padding: 0 18px; border-radius: 10px; border: 0; font: inherit; font-weight: 600; cursor: pointer; }
+  .cancel { background: #eceef3; color: #2b2d33; }
+  .add { background: #0a84ff; color: #fff; }
+  .add:disabled { opacity: .55; cursor: default; }
+  .hidden { display: none; }
+</style>
+<div class="dim" id="dim">
+  <form class="card" id="form" autocomplete="off">
+    <h1>Tambah tab</h1>
+    <div class="seg" id="seg"><button type="button" data-type="website" class="on">Situs web</button><button type="button" data-type="terminal">Terminal</button></div>
+
+    <label for="name">Nama</label>
+    <input type="text" id="name" maxlength="30" placeholder="mis. Kalender">
+
+    <div id="webFields">
+      <label for="url">Alamat (https)</label>
+      <input type="text" id="url" placeholder="calendar.example.com">
+      <label class="check"><input type="checkbox" id="google"> <span>Login dengan Google<p class="hint">Menyatukan sesi Google dengan tab lain yang memakainya.</p></span></label>
+      <label for="extra">Domain tambahan (opsional)</label>
+      <input type="text" id="extra" placeholder="sso.example.com, login.example.com">
+      <p class="hint">Tab hanya boleh membuka alamatnya sendiri. Isi ini kalau login lewat domain lain, dipisah koma.</p>
+    </div>
+    <p class="hint hidden" id="termHint">Membuka shell login Anda untuk cek cepat (ssh, python, dll.). Hanya satu terminal.</p>
+
+    <p class="error" id="error"></p>
+    <div class="actions"><button type="button" class="cancel" id="cancel">Batal</button><button type="submit" class="add" id="submit">Tambah</button></div>
+  </form>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let type = 'website';
+
+  function setType(next) {
+    type = next;
+    document.querySelectorAll('#seg button').forEach((b) => b.classList.toggle('on', b.dataset.type === type));
+    $('webFields').classList.toggle('hidden', type !== 'website');
+    $('termHint').classList.toggle('hidden', type !== 'terminal');
+  }
+  function reset() {
+    ['name', 'url', 'extra'].forEach((id) => { $(id).value = ''; });
+    $('google').checked = false;
+    $('error').textContent = '';
+    $('submit').disabled = false;
+    setType('website');
+    $('name').focus();
+  }
+  document.querySelectorAll('#seg button').forEach((b) => b.addEventListener('click', () => setType(b.dataset.type)));
+  $('cancel').addEventListener('click', () => sheet.close());
+  $('dim').addEventListener('mousedown', (e) => { if (e.target === $('dim')) sheet.close(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape') sheet.close(); });
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('submit').disabled = true;
+    const result = await sheet.add({ type, name: $('name').value, url: $('url').value, googleLogin: $('google').checked, extraHosts: $('extra').value });
+    if (!result.ok) { $('error').textContent = result.error; $('submit').disabled = false; }
+  });
+  sheet.onReset(reset);
+  reset();
+</script>

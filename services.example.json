@@ -1,0 +1,24 @@
+[
+  {
+    "id": "whatsapp",
+    "name": "WhatsApp",
+    "url": "https://web.whatsapp.com/",
+    "hosts": ["web.whatsapp.com", "whatsapp.com", "whatsapp.net"],
+    "color": "#4ca25a"
+  },
+  {
+    "id": "gmail",
+    "name": "Gmail",
+    "url": "https://mail.google.com/",
+    "hosts": ["mail.google.com", "google.com", "gstatic.com", "googleusercontent.com", "youtube.com"],
+    "partition": "google",
+    "googleLogin": true,
+    "color": "#d93a31"
+  },
+  {
+    "id": "terminal",
+    "name": "Terminal",
+    "type": "terminal",
+    "icon": "terminal.svg"
+  }
+]

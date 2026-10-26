@@ -1,0 +1,88 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; }
+  body { padding: 14px; box-sizing: border-box; font: 13px -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; color: #1d1d1f; user-select: none; }
+  .glass {
+    position: relative; overflow: hidden; box-sizing: border-box; padding: 14px 18px; border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, .85);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, .18), 0 2px 6px rgba(0, 0, 0, .08);
+  }
+  .glass.pop { animation: pop .16s cubic-bezier(.2, .9, .3, 1.2); }
+  @keyframes pop { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: scale(1); } }
+  /* .bg maps 1:1 onto the overlay view: the glass sits 14px in, plus its 1px border. */
+  .bg { position: absolute; left: -15px; top: -15px; width: 560px; height: 150px; background: #f2f3f5; filter: blur(16px) saturate(1.8); }
+  .bg img { position: absolute; display: block; }
+  .tint { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255, 255, 255, .62), rgba(246, 248, 252, .48)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 0 0 .5px rgba(0, 0, 0, .06); }
+  .content { position: relative; }
+  h1 { margin: 0 0 10px; font-size: 11px; font-weight: 600; color: #6e6e73; letter-spacing: .05em; text-transform: uppercase; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  kbd { display: inline-block; min-width: 18px; padding: 2px 7px; margin-right: 7px; border-radius: 7px; background: rgba(255, 255, 255, .95); border: 1px solid rgba(0, 0, 0, .10); box-shadow: 0 1px 1px rgba(0, 0, 0, .08); text-align: center; font: 12px ui-monospace, 'SF Mono', Menlo, monospace; color: #1d1d1f; }
+  .chip { padding: 5px 13px; border-radius: 999px; background: rgba(0, 0, 0, .05); color: #3c3c43; }
+  .chip.sel { background: #0a84ff; color: #fff; box-shadow: 0 2px 8px rgba(10, 132, 255, .45); }
+</style>
+<div class="glass" id="glass">
+  <div class="bg" id="bg"></div>
+  <div class="tint"></div>
+  <div class="content">
+    <h1 id="title"></h1>
+    <div class="row" id="row"></div>
+  </div>
+</div>
+<script>
+  const glass = document.getElementById('glass');
+  const bg = document.getElementById('bg');
+  const title = document.getElementById('title');
+  const row = document.getElementById('row');
+  const item = (key, label) => {
+    const span = document.createElement('span');
+    const k = document.createElement('kbd');
+    k.textContent = key;
+    span.append(k, label);
+    return span;
+  };
+  hub.onOverlay(({ mode, services, selectedId, backdrop }) => {
+    // A new snapshot arrives only when the overlay has just opened.
+    if (backdrop) {
+      bg.replaceChildren(...backdrop.map((t) => {
+        const img = document.createElement('img');
+        img.src = t.src;
+        Object.assign(img.style, { left: t.left + 'px', top: t.top + 'px', width: t.width + 'px', height: t.height + 'px' });
+        return img;
+      }));
+      glass.classList.remove('pop');
+      void glass.offsetWidth;
+      glass.classList.add('pop');
+    }
+    const numbered = services.map((s, i) => item(String(i + 1), s.name));
+    if (mode === 'switch') {
+      title.textContent = 'Pindah ke (tahan Ctrl, tekan Tab untuk lanjut)';
+      row.replaceChildren(...services.map((s) => {
+        const chip = document.createElement('span');
+        chip.className = s.id === selectedId ? 'chip sel' : 'chip';
+        chip.textContent = s.name;
+        return chip;
+      }));
+      return;
+    }
+    if (mode === 'split') {
+      title.textContent = 'Split dengan apa?';
+      row.replaceChildren(...numbered, item('Esc', 'batal'));
+    } else {
+      title.textContent = 'Prefix';
+      row.replaceChildren(
+        item('b', 'tab bar'),
+        item('s', 'split'),
+        item('x', 'tutup split'),
+        item('1-9', 'pindah'),
+        item('p', 'back'),
+        item('n', 'forward'),
+        item('r', 'reload'),
+        item('h', 'home'),
+        item('c', 'reset login'),
+        item('Esc', 'batal'),
+      );
+    }
+  });
+</script>
