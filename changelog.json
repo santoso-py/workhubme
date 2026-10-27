@@ -1,0 +1,65 @@
+[
+  {
+    "version": "0.0.3",
+    "date": "2026-10-27",
+    "items": {
+      "en": [
+        "Unread badges: the count in a page title such as (3) Chat shows on the tab, and the total on the Dock icon. Turn it off per tab or in Settings.",
+        "Help sheet (Cmd+R then ?): the quick guide, what's new, and a Check for updates button that contacts GitHub only when you press it.",
+        "A short notice after you upgrade, pointing to what's new.",
+        "README screenshots that had lost their text are fixed, and the README now explains how to update."
+      ],
+      "id": [
+        "Badge belum dibaca: angka di judul halaman seperti (3) Chat muncul di tab, dan totalnya di ikon Dock. Bisa dimatikan per tab atau di Pengaturan.",
+        "Lembar Bantuan (Cmd+R lalu ?): panduan singkat, yang baru, dan tombol Cek pembaruan yang menghubungi GitHub hanya saat Anda menekannya.",
+        "Pemberitahuan singkat setelah Anda memperbarui, yang menunjuk ke yang baru.",
+        "Gambar README yang teksnya hilang sudah diperbaiki, dan README kini menjelaskan cara memperbarui."
+      ],
+      "ja": [
+        "未読バッジ: (3) Chat のようにページのタイトルにある数字がタブに、合計が Dock アイコンに表示されます。タブごと、または設定でオフにできます。",
+        "ヘルプシート(Cmd+R の後に ?): クイックガイド、新機能、そしてボタンを押したときだけ GitHub に接続する「アップデートを確認」ボタン。",
+        "アップデート後に、新機能を案内する短いお知らせを表示します。",
+        "テキストが消えていた README のスクリーンショットを修正し、README に更新方法を追加しました。"
+      ]
+    }
+  },
+  {
+    "version": "0.0.2",
+    "date": "2026-10-26",
+    "items": {
+      "en": [
+        "Three languages (English, Bahasa Indonesia, Japanese), with a picker on the first-run screen.",
+        "Settings (Cmd+R then , or Cmd+,): language and an experimental two-finger swipe to switch tabs.",
+        "A first-run screen that explains what the app is for and the few keys you need.",
+        "README: split view guide, tips, and screenshots."
+      ],
+      "id": [
+        "Tiga bahasa (English, Bahasa Indonesia, Jepang), dengan pilihan di layar awal.",
+        "Pengaturan (Cmd+R lalu , atau Cmd+,): bahasa dan gesek dua jari eksperimental untuk berpindah tab.",
+        "Layar awal yang menjelaskan fungsi aplikasi dan beberapa tombol yang perlu Anda tahu.",
+        "README: panduan tampilan terbagi, tips, dan screenshot."
+      ],
+      "ja": [
+        "3 つの言語(English、Bahasa Indonesia、日本語)に対応し、初回画面で選べます。",
+        "設定(Cmd+R の後に , または Cmd+,): 言語と、タブを切り替える実験的な 2 本指スワイプ。",
+        "アプリの用途と最低限のキー操作を説明する初回画面。",
+        "README: 分割表示のガイド、ヒント、スクリーンショット。"
+      ]
+    }
+  },
+  {
+    "version": "0.0.1",
+    "date": "2026-10-26",
+    "items": {
+      "en": [
+        "First release: tabs for the sites you pin, each with its own login, a terminal tab, a keyboard prefix, split view and a Ctrl+Tab switcher."
+      ],
+      "id": [
+        "Rilis pertama: tab untuk situs yang Anda sematkan, masing-masing dengan login sendiri, tab terminal, prefix keyboard, tampilan terbagi, dan pengalih Ctrl+Tab."
+      ],
+      "ja": [
+        "最初のリリース: ピン留めしたサイトをそれぞれ別のログインで開くタブ、ターミナルタブ、キーボードプレフィックス、分割表示、Ctrl+Tab スイッチャー。"
+      ]
+    }
+  }
+]

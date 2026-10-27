@@ -9,5 +9,6 @@ contextBridge.exposeInMainWorld('hub', {
   onState: (cb) => ipcRenderer.on('state', (_e, data) => cb(data)),
   lang: () => ipcRenderer.invoke('i18n:lang'),
   onLang: (cb) => ipcRenderer.on('lang', (_e, lang) => cb(lang)),
+  onBadges: (cb) => ipcRenderer.on('badges', (_e, labels) => cb(labels)),
   onOverlay: (cb) => ipcRenderer.on('overlay', (_e, data) => cb(data)),
 });

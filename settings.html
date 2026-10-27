@@ -15,7 +15,8 @@
   .hint { margin: 4px 0 0; font-size: 11.5px; color: #8a8c94; line-height: 1.4; }
   .sub { margin-left: 24px; }
   .hidden { display: none; }
-  .actions { display: flex; justify-content: flex-end; margin-top: 22px; }
+  .actions { display: flex; justify-content: space-between; align-items: center; margin-top: 22px; }
+  .actions button.plain { background: #eceef3; color: #2b2d33; }
   .actions button { height: 34px; padding: 0 20px; border-radius: 10px; border: 0; background: #0a84ff; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
 </style>
 <div class="dim" id="dim">
@@ -28,7 +29,10 @@
     <label class="check"><input type="checkbox" id="swipe"><span><span data-i18n="set.swipe"></span><p class="hint" data-i18n="set.swipeHint"></p></span></label>
     <label class="check sub hidden" id="invertRow"><input type="checkbox" id="invert"><span data-i18n="set.swipeInvert"></span></label>
 
-    <div class="actions"><button id="done" data-i18n="set.done"></button></div>
+    <label class="check"><input type="checkbox" id="badges"><span data-i18n="set.badges"></span></label>
+    <label class="check sub hidden" id="dockRow"><input type="checkbox" id="dock"><span data-i18n="set.dockBadge"></span></label>
+
+    <div class="actions"><button id="help" class="plain" data-i18n="set.help"></button><button id="done" data-i18n="set.done"></button></div>
   </div>
 </div>
 <script src="i18n.js"></script>
@@ -55,6 +59,9 @@
     $('swipe').checked = current.swipe;
     $('invert').checked = current.swipeInvert;
     $('invertRow').classList.toggle('hidden', !current.swipe);
+    $('badges').checked = current.badges;
+    $('dock').checked = current.dockBadge;
+    $('dockRow').classList.toggle('hidden', !current.badges);
   }
 
   async function update(patch) {
@@ -66,7 +73,10 @@
 
   $('swipe').addEventListener('change', () => update({ swipe: $('swipe').checked }));
   $('invert').addEventListener('change', () => update({ swipeInvert: $('invert').checked }));
+  $('badges').addEventListener('change', () => update({ badges: $('badges').checked }));
+  $('dock').addEventListener('change', () => update({ dockBadge: $('dock').checked }));
   $('done').addEventListener('click', () => settings.close());
+  $('help').addEventListener('click', () => settings.openHelp());
   $('dim').addEventListener('mousedown', (e) => { if (e.target === $('dim')) settings.close(); });
   window.addEventListener('keydown', (e) => { if (e.key === 'Escape') settings.close(); });
   settings.lang().then((l) => { lang = l || 'en'; applyLang(); });

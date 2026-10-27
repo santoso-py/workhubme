@@ -43,6 +43,10 @@ Alasannya satu: berpindah antara lima atau enam tab dan sebuah terminal dengan c
 |:---:|:---:|
 | <img src="docs/add-tab.png" alt="Dialog untuk menambah tab situs web atau terminal"> | <img src="docs/settings.png" alt="Pengaturan: bahasa dan gesek dua jari"> |
 
+<img src="docs/help.png" width="420" alt="Bantuan: panduan singkat, yang baru, dan cek pembaruan">
+
+<sub>Bantuan (`Cmd+R`, `?`). Pembaruan "tersedia" yang tampil di sini adalah data contoh.</sub>
+
 <img src="docs/terminal.png" width="560" alt="Tab terminal menjalankan python dan ssh">
 
 <sub>Semua gambar adalah halaman UI aplikasi yang dirender di luar layar dengan isi demo fiktif dan halaman pengganti di belakang panel; tampilan terbagi di bagian atas disusun dari dua di antaranya. Bahasa antarmuka (English, Bahasa Indonesia, 日本語) dipilih di Pengaturan.</sub>
@@ -58,7 +62,9 @@ Alasannya satu: berpindah antara lima atau enam tab dan sebuah terminal dengan c
 - **Tab terminal.** Shell login Anda, untuk pengecekan cepat dengan `ssh` atau `python`. Baru berjalan saat tab pertama kali dibuka.
 - **Tiga bahasa.** English, Bahasa Indonesia, dan 日本語, diganti di Pengaturan (`Cmd+,`). Bawaannya mengikuti bahasa sistem.
 - **Gesek dua jari (eksperimental, mati secara bawaan).** Gesek ke kanan untuk tab berikutnya, ke kiri untuk sebelumnya. Aktifkan di Pengaturan.
-- **Senyap.** Tanpa akun, tanpa telemetri, tanpa lalu lintas jaringan milik aplikasi sendiri.
+- **Badge belum dibaca.** Angka di judul halaman seperti `(3) Chat` muncul di tab, dan totalnya di ikon Dock. WhatsApp dan Gmail langsung bekerja; untuk situs lain isi pola saat menambah tab, atau matikan per tab atau di Pengaturan.
+- **Bantuan dan yang baru.** `Cmd+R`, `?` membuka panduan singkat, catatan rilis, dan tombol untuk mengecek pembaruan.
+- **Senyap.** Tanpa akun, tanpa telemetri, dan tanpa lalu lintas jaringan milik aplikasi sendiri, kecuali pengecekan pembaruan yang Anda mulai sendiri.
 
 ## Mulai cepat
 
@@ -104,7 +110,8 @@ Prefix-nya `Cmd+R`, lalu satu tombol. `Esc` membatalkan.
 | `Cmd+R`, `r` | Muat ulang |
 | `Cmd+R`, `h` | Kembali ke halaman awal tab |
 | `Cmd+R`, `c` | Keluar dari akun tab yang fokus (ada konfirmasi) |
-| `Cmd+R`, `,` atau `Cmd+,` | Pengaturan: bahasa dan gesek |
+| `Cmd+R`, `,` atau `Cmd+,` | Pengaturan: bahasa, gesek, dan badge |
+| `Cmd+R`, `?` | Bantuan: panduan singkat, yang baru, cek pembaruan |
 | Tahan `Ctrl`, tekan `Tab` | Pengalih; lepas `Ctrl` untuk pindah |
 | `Shift`+klik tab | Bagi layar dengan tab itu |
 
@@ -119,8 +126,24 @@ Prefix-nya `Cmd+R`, lalu satu tombol. `Esc` membatalkan.
 - **Bahasa.** Layar awal punya pilihan bahasa (English, Bahasa Indonesia, 日本語). Sebelum Anda memilih, aplikasi mengikuti bahasa sistem. Ubah nanti di Pengaturan (`Cmd+,`).
 - **Halaman login terbuka di browser dan tab terus memuat.** Tab mencoba membuka domain yang tidak boleh dibukanya. Lihat `~/Library/Logs/workhubme/blocked-navigation.log`, lalu tambahkan domain itu di "Domain tambahan" saat menambah tab (atau centang "Login dengan Google" untuk Google). Untuk tab yang sudah ada, ubah `hosts`-nya di `services.json` lalu mulai ulang.
 - **Terjebak di halaman yang tidak bisa ditinggalkan?** `Cmd+R`, `p` untuk mundur; `Cmd+R`, `h` ke halaman awal tab; `Cmd+R`, `c` keluar dari akun tab, berguna saat halaman bilang akun Anda tidak punya akses.
+- **Badge untuk situs lain.** Kalau sebuah situs menampilkan jumlahnya di judul halaman dengan caranya sendiri, ketik pola pendek dengan satu grup di "Badge belum dibaca" saat menambah tab, misalnya `tickets: (\d+)`. Kosongkan untuk otomatis, atau ketik `off`. Untuk tab yang sudah ada, isi `"badge": "tickets: (\\d+)"` di `services.json` lalu mulai ulang.
 - **Cadangkan pengaturan Anda.** Salin `services.json` dan `settings.json` dari `~/Library/Application Support/workhubme/`.
-- **Jaga Electron tetap baru.** Jalankan `npm update electron` sesekali.
+- **Jaga Electron tetap baru.** Electron dikunci pada versi eksak, jadi `npm update electron` tidak mengubah apa pun; lihat [Memperbarui](#memperbarui).
+
+## Memperbarui
+
+workhubme tidak memperbarui dirinya sendiri. Untuk mendapat versi terbaru, di folder hasil clone:
+
+```sh
+git pull
+npm install
+```
+
+lalu mulai ulang aplikasi. Tab dan pengaturan Anda tetap ada karena disimpan di luar repo. Peluncuran pertama setelah pembaruan menampilkan pemberitahuan singkat, dan `Cmd+R`, `?` membuka Bantuan berisi **Yang baru**.
+
+- **Cek dari aplikasi.** Bantuan (`Cmd+R`, `?`, atau Pengaturan → Bantuan dan yang baru) punya tombol **Cek pembaruan**. Tombol itu mengirim satu permintaan anonim ke GitHub, hanya saat Anda menekannya, dan memberi tahu apakah ada rilis yang lebih baru. Tidak pernah mengunduh atau memasang apa pun.
+- **Diberi tahu tanpa membuka aplikasi.** Di GitHub pilih **Watch → Custom → Releases**, atau berlangganan `https://github.com/santoso-py/workhubme/releases.atom`.
+- **Electron dikunci** pada versi eksak, jadi `npm update electron` tidak mengubah apa pun. Perbaikan keamanannya datang bersama rilis workhubme yang baru. Untuk lebih cepat, jalankan `npm install --save-exact electron@latest` lalu coba aplikasinya.
 
 ## Di mana data Anda tersimpan
 
@@ -129,7 +152,7 @@ Prefix-nya `Cmd+R`, lalu satu tombol. `Esc` membatalkan.
 - Login dan data situs: folder yang sama, satu partisi per tab
 - Log: `~/Library/Logs/workhubme/`. `blocked-navigation.log` dan `actions.log` hanya mencatat origin dan path, tidak pernah query string.
 
-Tidak ada yang keluar dari komputer Anda selain yang dikirim dan diterima oleh situs yang Anda sematkan sendiri.
+Tidak ada yang keluar dari komputer Anda selain yang dikirim dan diterima oleh situs yang Anda sematkan sendiri, dan pengecekan pembaruan saat Anda menekan tombolnya (satu permintaan anonim ke GitHub: nama dan versi aplikasi, serta alamat IP Anda seperti pada permintaan web mana pun).
 
 ## Model keamanan
 
@@ -140,7 +163,7 @@ Layak dibaca sebelum Anda mempercayakan akun sungguhan.
 - Halaman hanya diberi izin notifikasi, tulis clipboard, dan layar penuh.
 - Terminal menjalankan shell login Anda **dengan hak akses Anda**. Halamannya lokal, tidak bisa berpindah halaman atau membuka jendela, dan setiap pesan ke terminal harus berasal dari frame utama halaman itu, dengan ukuran dan tipe yang divalidasi. Perlakukan seperti terminal lain.
 - `services.json` divalidasi lagi saat dibaca, sehingga berkas yang disunting tangan tidak bisa memperluas apa yang boleh dibuka sebuah tab.
-- Dependensi dikunci pada versi eksak (Electron, `node-pty`, `xterm`). **Tidak ada pembaruan otomatis**: jalankan `npm update electron` sendiri sesekali, karena Electron membawa Chromium.
+- Dependensi dikunci pada versi eksak (Electron, `node-pty`, `xterm`). **Tidak ada pembaruan otomatis**: ambil rilis baru (lihat [Memperbarui](#memperbarui)). Electron membawa Chromium dan dikunci, jadi perbaikan keamanannya datang bersama rilis workhubme yang baru.
 
 Menemukan masalah? Lihat [SECURITY.md](SECURITY.md).
 
@@ -149,7 +172,7 @@ Menemukan masalah? Lihat [SECURITY.md](SECURITY.md).
 Mohon dibaca. Ini bagian yang sering dilewatkan README lain.
 
 - **Independen dan tidak resmi.** Tidak berafiliasi, didukung, atau disponsori oleh situs mana pun yang Anda sematkan. Nama produk seperti WhatsApp atau Gmail milik pemiliknya masing-masing dan hanya disebut untuk menjelaskan apa yang bisa Anda sematkan. Tidak ada logo yang disertakan.
-- **Ini hanya jendela browser.** Tidak mengotomatisasi, mengambil data (scraping), atau mengubah halaman, dan tidak mengirim pesan atas nama Anda. Satu-satunya yang dibaca dari halaman adalah besar gulir, untuk fitur gesek yang opsional.
+- **Ini hanya jendela browser.** Tidak mengotomatisasi, mengambil data (scraping), atau mengubah halaman, dan tidak mengirim pesan atas nama Anda. Yang dibaca dari halaman hanya besar gulir (untuk gesek yang opsional) dan judul halaman (untuk badge belum dibaca). Keduanya tidak disimpan atau dikirim ke mana pun.
 - **User agent.** Supaya lebih banyak situs menerima login, aplikasi menghapus token `Electron` dari user agent-nya. Itu mengubah cara browser Anda memperkenalkan diri. Sebagian layanan bisa menolak atau membatasinya, dan Google memblokir sign-in OAuth dari webview tertanam sejak 2021 ([pengumuman](https://developers.googleblog.com/en/upcoming-security-changes-to-googles-oauth-20-authorization-endpoint-in-embedded-webviews/); pengumuman itu tidak menyebut Electron, jadi belum jelas apakah berlaku di sini). Karena itu login Google di dalam aplikasi ini bisa gagal.
 - **Baca syarat tiap layanan.** Sebagai contoh, ketentuan layanan WhatsApp (dibaca Oktober 2026) membatasi akses otomatis, pesan massal, dan penggunaan non-personal. Aplikasi ini tidak melakukan itu, tetapi Anda bertanggung jawab atas cara Anda memakai layanan yang disematkan. Ini bukan nasihat hukum.
 - **Gratis dan akan tetap begitu.** Lisensi MIT. Tanpa versi berbayar, tanpa iklan, tanpa pelacakan, tanpa ajakan donasi.
@@ -163,7 +186,8 @@ Mohon dibaca. Ini bagian yang sering dilewatkan README lain.
 - Unduhan memakai dialog simpan bawaan Electron. Klik notifikasi tidak memfokuskan tab. Tidak ada lencana pesan belum dibaca.
 - Antarmuka tersedia dalam English, Bahasa Indonesia, dan Jepang. Teks Indonesia dan Jepang ditulis tanpa ditinjau penutur asli; koreksi sangat diterima.
 - Gesek dua jari masih eksperimental dan tidak semulus gesek bawaan macOS: tab berpindah setelah gesekan melewati ambang, bukan mengikuti jari Anda, dan menggulir halaman ke samping juga bisa memicunya. Mati secara bawaan dan tidak pernah aktif di tab terminal.
-- Prefix (`Cmd+R`) dan pintasan lain belum bisa diubah; Pengaturan baru berisi bahasa dan gesek.
+- Badge hanya bekerja untuk situs yang menampilkan jumlah di judul halaman (WhatsApp dan Gmail begitu; banyak yang lain tidak). Halaman bisa menaruh angka apa saja di judulnya sendiri, jadi anggap badge sebagai petunjuk. Mengeklik notifikasi masih belum membuka tab-nya.
+- Prefix (`Cmd+R`) dan pintasan lain belum bisa diubah; Pengaturan berisi bahasa, gesek, dan badge.
 - Tidak bertanda tangan, dijalankan dari source. Kalau Anda membuat dan membagikan `.app` sendiri, sertakan `LICENSE` Electron dan `LICENSES.chromium.html` Chromium dari distribusi Electron.
 - Perangkat lunak awal (0.0.2). Harap maklum kalau masih kasar.
 

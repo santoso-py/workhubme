@@ -1,4 +1,4 @@
-const { app, BaseWindow, WebContentsView, Menu, dialog, session, shell, ipcMain } = require('electron');
+const { app, BaseWindow, WebContentsView, Menu, dialog, net, session, shell, ipcMain } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { registerTerminal } = require('./terminal');
@@ -6,6 +6,9 @@ const store = require('./services-store');
 const settingsStore = require('./settings-store');
 const I18N = require('./i18n');
 const { createSwipeDetector } = require('./gesture');
+const { parseBadge, formatBadge } = require('./badge');
+const updates = require('./updates');
+const pkg = require('./package.json');
 
 // The user's tabs, read from userData/services.json once the app is ready. Mutated in place.
 const services = [];
@@ -35,6 +38,8 @@ let lang = 'en';
 const T = (key, params) => I18N.t(lang, key, params);
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
 const DEBUG_SWIPE = process.env.WORKHUB_DEBUG_SWIPE === '1';
+const NO_OPEN = process.env.WORKHUB_NO_OPEN === '1'; // tests: record links instead of opening the browser
+const NO_DOCK = process.env.WORKHUB_NO_DOCK === '1'; // tests: record the Dock label instead of touching the real Dock icon
 
 let prefixState = null; // null | 'prefix' | 'split'
 let prefixTimer;
@@ -183,6 +188,8 @@ function createServiceView(service) {
   view.webContents.on('focus', () => {
     activeId = service.id;
   });
+  // Unread counts come from the page title, so nothing is injected into the page.
+  view.webContents.on('page-title-updated', (_event, title) => updateBadge(service, title));
   view.webContents.loadURL(service.url);
   return view;
 }
@@ -217,6 +224,42 @@ function slideViews(fromId, toId, target) {
   };
   slideTimer = setInterval(tick, 16);
   tick();
+}
+
+// Unread badges: the count parsed from each tab's page title, shown on the tab and summed on the Dock icon.
+const badgeCounts = new Map(); // serviceId -> count (only tabs with a non-zero count)
+
+let lastDockLabel = null;
+
+function setDockBadge(label) {
+  if (label === lastDockLabel) return; // the Dock only needs to hear about changes
+  lastDockLabel = label;
+  if (NO_DOCK) {
+    appendLog('actions.log', `dock-badge "${label}"`); // lets tests see the label without touching the real Dock tile
+    return;
+  }
+  app.dock?.setBadge(label);
+}
+
+function publishBadges() {
+  const labels = {};
+  if (settings.badges) for (const [id, count] of badgeCounts) labels[id] = formatBadge(count);
+  chrome?.webContents.send('badges', labels);
+  const total = settings.badges && settings.dockBadge ? [...badgeCounts.values()].reduce((sum, n) => sum + n, 0) : 0;
+  setDockBadge(total ? formatBadge(total, 999) : '');
+}
+
+function updateBadge(service, title) {
+  let count = 0;
+  try {
+    count = parseBadge(service.badge, title);
+  } catch {
+    count = 0; // a pattern that fails to compile is treated as "no count", never as a crash
+  }
+  if ((badgeCounts.get(service.id) ?? 0) === count) return;
+  if (count) badgeCounts.set(service.id, count);
+  else badgeCounts.delete(service.id);
+  publishBadges();
 }
 
 // Two-finger swipe moves to the neighbouring tab. It reads wheel events natively (no script is
@@ -327,6 +370,7 @@ async function resetSession() {
 // backdrop-filter cannot see other views. Cleared whenever the overlay hides.
 let backdrop = null;
 let overlayToken = 0;
+let overlayMode = null; // 'prefix' | 'split' | 'switch' | 'updated' while the overlay is showing
 
 async function captureBackdrop() {
   const o = overlay.getBounds();
@@ -352,6 +396,7 @@ async function captureBackdrop() {
 
 async function showOverlay(payload) {
   const token = ++overlayToken;
+  overlayMode = payload.mode;
   let fresh;
   if (!backdrop) {
     const tiles = await captureBackdrop().catch(() => []);
@@ -365,6 +410,7 @@ async function showOverlay(payload) {
 
 function hideOverlay() {
   overlayToken++;
+  overlayMode = null;
   backdrop = null;
   overlay.setVisible(false);
 }
@@ -437,7 +483,7 @@ const PREFIX_NAV = { p: 'back', n: 'forward', r: 'reload', h: 'home' };
 
 // tmux-style prefix: Cmd+R, then b (toggle tab bar), s (split, then pick a number),
 // x (close split), 1-9 (switch primary), p/n (back/forward), r (reload), h (home), c (reset login),
-// , (settings), Esc (cancel).
+// , (settings), ? (help and what's new), Esc (cancel).
 function handleKey(event, input) {
   // Releasing Ctrl confirms the Ctrl+Tab switcher.
   if (input.type === 'keyUp') {
@@ -498,6 +544,9 @@ function handleKey(event, input) {
   } else if (key === ',') {
     setPrefix(null);
     openSheet(settingsSheet);
+  } else if (key === '?') {
+    setPrefix(null);
+    openSheet(helpSheet);
   } else if (target) {
     selectService(target.id, false);
     setPrefix(null);
@@ -541,6 +590,7 @@ function createWindow() {
   chrome.webContents.once('did-finish-load', () => {
     sendServices();
     layout();
+    setTimeout(announceUpdate, 1200);
   });
 
   for (const service of services) {
@@ -573,6 +623,7 @@ function sendServices() {
     'services',
     services.map(({ id, name, icon, color }) => ({ id, name, icon, color })),
   );
+  publishBadges();
 }
 
 function addService(entry) {
@@ -599,6 +650,7 @@ function removeService(id) {
   }
   win.contentView.removeChildView(view);
   websiteContents.delete(view.webContents);
+  badgeCounts.delete(id);
   view.webContents.close();
   views.delete(id);
   services.splice(index, 1);
@@ -619,7 +671,8 @@ function removeService(id) {
 const makeSheet = (file, preload) => ({ file, preload, view: null, open: false });
 const addSheet = makeSheet('add-site.html', 'sheet-preload.js');
 const settingsSheet = makeSheet('settings.html', 'settings-preload.js');
-const sheets = [addSheet, settingsSheet];
+const helpSheet = makeSheet('help.html', 'help-preload.js');
+const sheets = [addSheet, settingsSheet, helpSheet];
 
 function openSheet(target) {
   for (const other of sheets) if (other !== target && other.open) closeSheet(other, false);
@@ -675,6 +728,7 @@ function buildMenu() {
       },
       { role: 'editMenu' },
       { role: 'windowMenu' },
+      { role: 'help', submenu: [{ label: T('menu.help'), click: () => openSheet(helpSheet) }] },
     ]),
   );
 }
@@ -687,13 +741,74 @@ function applySettings(patch) {
   settingsStore.save(settingsFile(), settings);
   lang = settings.language ?? I18N.pick(app.getLocale());
   buildMenu();
+  publishBadges(); // the badge switches may have changed
   for (const view of uiViews()) if (!view.webContents.isDestroyed()) view.webContents.send('lang', lang);
 }
 
-const settingsSnapshot = () => ({ language: lang, languages: I18N.LANGS, swipe: settings.swipe, swipeInvert: settings.swipeInvert });
+const settingsSnapshot = () => ({ language: lang, languages: I18N.LANGS, swipe: settings.swipe, swipeInvert: settings.swipeInvert, badges: settings.badges, dockBadge: settings.dockBadge });
 
 // Turns a validation failure into a message in the active language.
 const userMessage = (error) => (error instanceof store.UserError ? T(`err.${error.code}`, error.params) : T('err.dataInvalid'));
+
+// ---- Help sheet, release notes and the update check ------------------------------------------------
+// The check is the only network request the app makes on its own behalf, and only when the user presses
+// "Check for updates". Nothing is downloaded or run: the reply is reduced to a version, a link inside this
+// repository, and plain text (see updates.js).
+const UPDATE_REPO = (() => {
+  const url = String(pkg.repository?.url ?? pkg.repository ?? '');
+  const match = /github\.com[/:]([^/]+\/[^/]+?)(?:\.git)?$/.exec(url);
+  return match && updates.isRepo(match[1]) ? match[1] : 'santoso-py/workhubme';
+})();
+const changelog = updates.cleanChangelog(require('./changelog.json'));
+let lastRelease = null; // the release found by the last check; the only link the Help sheet may open
+
+async function checkForUpdates() {
+  const url = process.env.WORKHUB_UPDATE_URL || updates.apiUrl(UPDATE_REPO); // the override is for tests
+  const timeoutMs = Number(process.env.WORKHUB_UPDATE_TIMEOUT_MS) || 8000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const current = app.getVersion();
+  try {
+    const response = await net.fetch(url, {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': `${app.name}/${current}`, 'Accept-Language': 'en' }, // a fixed language, so the system locale is not sent
+      signal: controller.signal,
+    });
+    if (response.status === 404) return { status: 'none', current };
+    if (!response.ok) return { status: 'error' };
+    const text = await response.text();
+    if (text.length > 200_000) return { status: 'error' };
+    const release = updates.parseRelease(JSON.parse(text), UPDATE_REPO);
+    if (!release) return { status: 'error' };
+    lastRelease = release;
+    return updates.isNewer(release.version, current)
+      ? { status: 'available', current, latest: release.version, notes: release.notes }
+      : { status: 'current', current };
+  } catch {
+    return { status: 'error' }; // offline, timed out, or an unreadable reply: say so and carry on
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function openExternalChecked(url) {
+  if (typeof url !== 'string' || !url.startsWith(`${updates.repoUrl(UPDATE_REPO)}`)) return;
+  if (NO_OPEN) appendLog('actions.log', `open-external ${url}`);
+  else shell.openExternal(url);
+}
+
+// After an upgrade, a short notice points to what's new. A first run only records the version.
+function announceUpdate() {
+  const current = app.getVersion();
+  const seen = settings.lastSeenVersion;
+  if (seen === current) return;
+  settings = settingsStore.merge(settings, { lastSeenVersion: current });
+  settingsStore.save(settingsFile(), settings);
+  if (!seen) return;
+  showOverlay({ mode: 'updated', version: current, services: [] });
+  setTimeout(() => {
+    if (overlayMode === 'updated') hideOverlay();
+  }, 8000);
+}
 
 // Anything that can reach these handlers can add tabs or run a shell, so each one checks the sender.
 const fromView = (view, event) => Boolean(view) && event.sender === view.webContents && event.senderFrame === view.webContents.mainFrame;
@@ -739,6 +854,17 @@ ipcMain.handle('settings:set', (event, patch) => {
   if (!fromView(settingsSheet.view, event)) return { ok: false };
   applySettings(patch);
   return { ok: true, settings: settingsSnapshot() };
+});
+ipcMain.on('sheet:open-help', (event) => {
+  if (fromView(settingsSheet.view, event)) openSheet(helpSheet);
+});
+ipcMain.handle('help:get', (event) => (fromView(helpSheet.view, event) ? { version: app.getVersion(), changelog, repoUrl: updates.repoUrl(UPDATE_REPO) } : null));
+ipcMain.handle('help:check-updates', (event) => (fromView(helpSheet.view, event) ? checkForUpdates() : { status: 'error' }));
+ipcMain.on('help:open-release', (event) => {
+  if (fromView(helpSheet.view, event) && lastRelease) openExternalChecked(lastRelease.url);
+});
+ipcMain.on('help:open-project', (event) => {
+  if (fromView(helpSheet.view, event)) openExternalChecked(updates.repoUrl(UPDATE_REPO));
 });
 ipcMain.handle('i18n:lang', (event) => (uiViews().some((v) => fromView(v, event)) ? lang : null));
 

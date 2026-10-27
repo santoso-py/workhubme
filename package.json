@@ -1,6 +1,6 @@
 {
   "name": "workhubme",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A small browser shell for the sites you pin, plus a terminal tab, driven by a keyboard prefix.",
   "main": "main.js",
   "private": true,

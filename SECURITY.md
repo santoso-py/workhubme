@@ -13,12 +13,13 @@ This is a small, early project maintained in spare time. Reports are handled on 
 - A way to send input to the terminal from anything other than the terminal page
 - A `services.json` that makes a tab do more than the validation intends
 - Any way to make the swipe message (`swipe:wheel`) do more than switch tabs, or to send it from anything other than a website tab
+- Any way to make the update check run without the user pressing its button, send more than the one version request, or open a link outside this project's GitHub page
 - Anything that makes the app send data off the machine on its own
 
 ## What is not
 
 - The terminal being able to run commands. That is its purpose; it runs your login shell with your privileges.
-- Problems in the sites you pin, or in Electron and Chromium themselves. Update Electron (`npm update electron`) and report upstream.
+- Problems in the sites you pin, or in Electron and Chromium themselves. Update to the latest workhubme release (Electron is pinned and moves with releases) and report upstream.
 - Services refusing sign-in from an embedded browser.
 
 ## Supported versions

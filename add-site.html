@@ -38,6 +38,9 @@
       <label for="extra" data-i18n="add.extra"></label>
       <input type="text" id="extra" placeholder="sso.example.com, login.example.com">
       <p class="hint" data-i18n="add.extraHint"></p>
+      <label for="badge" data-i18n="add.badge"></label>
+      <input type="text" id="badge" data-i18n-ph="add.badgePh">
+      <p class="hint" data-i18n="add.badgeHint"></p>
     </div>
     <p class="hint hidden" id="termHint" data-i18n="add.termHint"></p>
 
@@ -65,7 +68,7 @@
     $('termHint').classList.toggle('hidden', type !== 'terminal');
   }
   function reset() {
-    ['name', 'url', 'extra'].forEach((id) => { $(id).value = ''; });
+    ['name', 'url', 'extra', 'badge'].forEach((id) => { $(id).value = ''; });
     $('google').checked = false;
     $('error').textContent = '';
     $('submit').disabled = false;
@@ -79,7 +82,7 @@
   $('form').addEventListener('submit', async (e) => {
     e.preventDefault();
     $('submit').disabled = true;
-    const result = await sheet.add({ type, name: $('name').value, url: $('url').value, googleLogin: $('google').checked, extraHosts: $('extra').value });
+    const result = await sheet.add({ type, name: $('name').value, url: $('url').value, googleLogin: $('google').checked, extraHosts: $('extra').value, badge: $('badge').value });
     if (!result.ok) { $('error').textContent = result.error; $('submit').disabled = false; }
   });
   sheet.onReset(reset);

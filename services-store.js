@@ -2,6 +2,7 @@
 // Kept free of Electron imports so it can be tested with plain Node.
 const fs = require('node:fs');
 const path = require('node:path');
+const { isValidPattern } = require('./badge');
 
 const HOSTNAME = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 const COLORS = ['#4ca25a', '#d93a31', '#3a63e0', '#8b3fe0', '#e8742c', '#1f9d8f', '#d6336c', '#7a5af8'];
@@ -71,10 +72,15 @@ function createEntry(form, existing) {
   const bad = extras.find((h) => !isHostname(h));
   if (bad) throw new UserError('extraInvalid', { host: bad });
 
+  // Badge: empty/'auto' = automatic (stored as nothing), 'off', or a custom pattern.
+  const badgeInput = String(form.badge ?? '').trim();
+  if (badgeInput && badgeInput !== 'auto' && badgeInput !== 'off' && !isValidPattern(badgeInput)) throw new UserError('badgeInvalid');
+
   const googleLogin = form.googleLogin === true;
   const hosts = [...new Set([url.hostname.toLowerCase(), ...extras, ...(googleLogin ? GOOGLE.hosts : [])])];
   const entry = { id: uniqueId(slug(name), existing), name, url: url.href, hosts, color };
   if (googleLogin) Object.assign(entry, { partition: GOOGLE.partition, googleLogin: true });
+  if (badgeInput && badgeInput !== 'auto') entry.badge = badgeInput;
   return entry;
 }
 
@@ -93,6 +99,7 @@ function normalizeStored(raw) {
     Object.assign(entry, { url: url.href, hosts: [...new Set([url.hostname.toLowerCase(), ...hosts])] });
     if (typeof raw.partition === 'string' && /^[a-z0-9-]{1,40}$/.test(raw.partition)) entry.partition = raw.partition;
     if (raw.googleLogin === true) entry.googleLogin = true;
+    if (raw.badge === 'off' || (typeof raw.badge === 'string' && raw.badge !== 'auto' && isValidPattern(raw.badge))) entry.badge = raw.badge; // anything else falls back to automatic
     return entry;
   } catch {
     return null;

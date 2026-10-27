@@ -47,7 +47,7 @@
     span.append(k, label);
     return span;
   };
-  hub.onOverlay(({ mode, services, selectedId, backdrop }) => {
+  hub.onOverlay(({ mode, services, selectedId, backdrop, version }) => {
     // A new snapshot arrives only when the overlay has just opened.
     if (backdrop) {
       bg.replaceChildren(...backdrop.map((t) => {
@@ -61,6 +61,11 @@
       glass.classList.add('pop');
     }
     const numbered = services.map((s, i) => item(String(i + 1), s.name));
+    if (mode === 'updated') {
+      title.textContent = tr('overlay.updated', { version });
+      row.replaceChildren(item('Cmd+R', ''), item('?', tr('overlay.updatedHint')));
+      return;
+    }
     if (mode === 'switch') {
       title.textContent = tr('overlay.switchTitle');
       row.replaceChildren(...services.map((s) => {
@@ -86,6 +91,7 @@
         item('r', tr('key.reload')),
         item('h', tr('key.home')),
         item('c', tr('key.reset')),
+        item('?', tr('key.help')),
         item(',', tr('key.settings')),
         item('Esc', tr('key.cancel')),
       );

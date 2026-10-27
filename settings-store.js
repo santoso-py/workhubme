@@ -1,8 +1,9 @@
 // User preferences (settings.json). Free of Electron imports so it can be tested with plain Node.
 const fs = require('node:fs');
 const path = require('node:path');
+const { parseVersion } = require('./updates');
 
-const DEFAULTS = { language: null, swipe: false, swipeInvert: false };
+const DEFAULTS = { language: null, swipe: false, swipeInvert: false, badges: true, dockBadge: true, lastSeenVersion: null };
 const LANGUAGES = ['id', 'en', 'ja'];
 
 // Anything unknown or malformed falls back to the default; the file can be hand-edited.
@@ -12,6 +13,9 @@ function normalize(raw) {
     language: LANGUAGES.includes(input.language) ? input.language : DEFAULTS.language,
     swipe: input.swipe === true,
     swipeInvert: input.swipeInvert === true,
+    badges: input.badges !== false, // on unless explicitly switched off
+    dockBadge: input.dockBadge !== false,
+    lastSeenVersion: parseVersion(input.lastSeenVersion)?.join('.') ?? null, // set by the app, used for the "updated" notice
   };
 }
 
@@ -37,6 +41,9 @@ function merge(current, patch) {
     if (LANGUAGES.includes(patch.language)) next.language = patch.language;
     if (typeof patch.swipe === 'boolean') next.swipe = patch.swipe;
     if (typeof patch.swipeInvert === 'boolean') next.swipeInvert = patch.swipeInvert;
+    if (typeof patch.badges === 'boolean') next.badges = patch.badges;
+    if (typeof patch.dockBadge === 'boolean') next.dockBadge = patch.dockBadge;
+    if (parseVersion(patch.lastSeenVersion)) next.lastSeenVersion = parseVersion(patch.lastSeenVersion).join('.');
   }
   return next;
 }
