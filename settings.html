@@ -32,6 +32,9 @@
     <label class="check"><input type="checkbox" id="badges"><span data-i18n="set.badges"></span></label>
     <label class="check sub hidden" id="dockRow"><input type="checkbox" id="dock"><span data-i18n="set.dockBadge"></span></label>
 
+    <label class="check"><input type="checkbox" id="blur"><span><span data-i18n="set.blur"></span><p class="hint" data-i18n="set.blurHint"></p></span></label>
+    <div class="seg sub hidden" id="blurLevels" style="margin-left:24px"></div>
+
     <div class="actions"><button id="help" class="plain" data-i18n="set.help"></button><button id="done" data-i18n="set.done"></button></div>
   </div>
 </div>
@@ -62,6 +65,16 @@
     $('badges').checked = current.badges;
     $('dock').checked = current.dockBadge;
     $('dockRow').classList.toggle('hidden', !current.badges);
+    $('blur').checked = current.chatBlur;
+    $('blurLevels').classList.toggle('hidden', !current.chatBlur);
+    $('blurLevels').replaceChildren(...['light', 'medium', 'strong'].map((level) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = tr('set.blur' + level[0].toUpperCase() + level.slice(1));
+      b.className = level === current.chatBlurLevel ? 'on' : '';
+      b.addEventListener('click', () => update({ chatBlurLevel: level }));
+      return b;
+    }));
   }
 
   async function update(patch) {
@@ -75,6 +88,7 @@
   $('invert').addEventListener('change', () => update({ swipeInvert: $('invert').checked }));
   $('badges').addEventListener('change', () => update({ badges: $('badges').checked }));
   $('dock').addEventListener('change', () => update({ dockBadge: $('dock').checked }));
+  $('blur').addEventListener('change', () => update({ chatBlur: $('blur').checked }));
   $('done').addEventListener('click', () => settings.close());
   $('help').addEventListener('click', () => settings.openHelp());
   $('dim').addEventListener('mousedown', (e) => { if (e.target === $('dim')) settings.close(); });

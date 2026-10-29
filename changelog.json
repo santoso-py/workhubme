@@ -1,5 +1,20 @@
 [
   {
+    "version": "0.0.4",
+    "date": "2026-10-29",
+    "items": {
+      "en": [
+        "Blur WhatsApp chats (optional): turn it on in Settings or press Cmd+R then v. The chat list and the messages are blurred; hover over an item to read it. It only changes how the page looks. If WhatsApp changes its page and part of it stays sharp, update the app, or set your own blurSelectors for that tab in services.json."
+      ],
+      "id": [
+        "Blur chat WhatsApp (opsional): nyalakan di Pengaturan atau tekan Cmd+R lalu v. Daftar chat dan pesan diaburkan; arahkan kursor ke satu item untuk membacanya. Ini hanya mengubah tampilan halaman. Kalau WhatsApp mengubah halamannya dan sebagian tetap terlihat jelas, perbarui aplikasi, atau isi blurSelectors sendiri untuk tab itu di services.json."
+      ],
+      "ja": [
+        "WhatsApp のチャットをぼかす(任意): 設定でオンにするか、Cmd+R の後に v を押します。チャット一覧とメッセージがぼやけ、項目にカーソルを合わせると読めます。ページの見た目を変えるだけです。WhatsApp がページを変更して一部がぼやけなくなった場合は、アプリを更新するか、services.json のそのタブに blurSelectors を指定してください。"
+      ]
+    }
+  },
+  {
     "version": "0.0.3",
     "date": "2026-10-27",
     "items": {

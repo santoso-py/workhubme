@@ -8,6 +8,7 @@ const I18N = require('./i18n');
 const { createSwipeDetector } = require('./gesture');
 const { parseBadge, formatBadge } = require('./badge');
 const updates = require('./updates');
+const blur = require('./blur');
 const pkg = require('./package.json');
 
 // The user's tabs, read from userData/services.json once the app is ready. Mutated in place.
@@ -190,6 +191,7 @@ function createServiceView(service) {
   });
   // Unread counts come from the page title, so nothing is injected into the page.
   view.webContents.on('page-title-updated', (_event, title) => updateBadge(service, title));
+  view.webContents.on('dom-ready', () => applyBlur(service)); // the stylesheet is gone after every page load
   view.webContents.loadURL(service.url);
   return view;
 }
@@ -261,6 +263,29 @@ function updateBadge(service, title) {
   else badgeCounts.delete(service.id);
   publishBadges();
 }
+
+// Privacy blur: a stylesheet inserted into tabs that have blur selectors (WhatsApp has a built-in preset).
+const blurKeys = new Map(); // serviceId -> key of the inserted stylesheet, so it can be removed again
+
+async function applyBlur(service) {
+  const view = views.get(service.id);
+  if (!view || service.type === 'terminal' || view.webContents.isDestroyed()) return;
+  const contents = view.webContents;
+  const previous = blurKeys.get(service.id);
+  if (previous) {
+    blurKeys.delete(service.id);
+    await contents.removeInsertedCSS(previous).catch(() => {}); // already gone after a reload
+  }
+  const selectors = blur.selectorsFor(service);
+  if (!settings.chatBlur || selectors.length === 0) return;
+  try {
+    blurKeys.set(service.id, await contents.insertCSS(blur.buildCss(selectors, settings.chatBlurLevel)));
+  } catch {
+    // the page was closed while the stylesheet was being added
+  }
+}
+
+const applyBlurAll = () => services.forEach((service) => applyBlur(service));
 
 // Two-finger swipe moves to the neighbouring tab. It reads wheel events natively (no script is
 // injected into pages) and is off unless the user turns it on in Settings.
@@ -544,6 +569,9 @@ function handleKey(event, input) {
   } else if (key === ',') {
     setPrefix(null);
     openSheet(settingsSheet);
+  } else if (key === 'v') {
+    setPrefix(null);
+    applySettings({ chatBlur: !settings.chatBlur });
   } else if (key === '?') {
     setPrefix(null);
     openSheet(helpSheet);
@@ -651,6 +679,7 @@ function removeService(id) {
   win.contentView.removeChildView(view);
   websiteContents.delete(view.webContents);
   badgeCounts.delete(id);
+  blurKeys.delete(id);
   view.webContents.close();
   views.delete(id);
   services.splice(index, 1);
@@ -742,10 +771,11 @@ function applySettings(patch) {
   lang = settings.language ?? I18N.pick(app.getLocale());
   buildMenu();
   publishBadges(); // the badge switches may have changed
+  applyBlurAll();
   for (const view of uiViews()) if (!view.webContents.isDestroyed()) view.webContents.send('lang', lang);
 }
 
-const settingsSnapshot = () => ({ language: lang, languages: I18N.LANGS, swipe: settings.swipe, swipeInvert: settings.swipeInvert, badges: settings.badges, dockBadge: settings.dockBadge });
+const settingsSnapshot = () => ({ language: lang, languages: I18N.LANGS, swipe: settings.swipe, swipeInvert: settings.swipeInvert, badges: settings.badges, dockBadge: settings.dockBadge, chatBlur: settings.chatBlur, chatBlurLevel: settings.chatBlurLevel });
 
 // Turns a validation failure into a message in the active language.
 const userMessage = (error) => (error instanceof store.UserError ? T(`err.${error.code}`, error.params) : T('err.dataInvalid'));

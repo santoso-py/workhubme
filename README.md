@@ -63,6 +63,7 @@ It exists for one reason: switching between five or six tabs and a terminal quic
 - **Three languages.** English, Bahasa Indonesia and 日本語, switched in Settings (`Cmd+,`). Defaults to your system language.
 - **Two-finger swipe (experimental, off by default).** Swipe right for the next tab, left for the previous. Turn it on in Settings.
 - **Unread badges.** The number in a page title like `(3) Chat` appears on the tab, and the total on the Dock icon. WhatsApp and Gmail work out of the box; for other sites give a pattern when you add the tab, or turn it off per tab or in Settings.
+- **Blur WhatsApp chats (optional).** Blurs the chat list and the messages so a glance at your screen shows nothing; hover over an item to read it. Turn it on in Settings or with `Cmd+R`, `v`.
 - **Help and what's new.** `Cmd+R`, `?` opens the quick guide, the release notes and a button to check for updates.
 - **Quiet.** No account, no telemetry, and no network traffic of its own, except the update check you start yourself.
 
@@ -112,6 +113,7 @@ The prefix is `Cmd+R`, then one key. `Esc` cancels.
 | `Cmd+R`, `c` | Sign out of the focused tab (asks first) |
 | `Cmd+R`, `,` or `Cmd+,` | Settings: language, swipe and badges |
 | `Cmd+R`, `?` | Help: quick guide, what's new, check for updates |
+| `Cmd+R`, `v` | Blur WhatsApp chats on or off |
 | Hold `Ctrl`, press `Tab` | Switcher; release `Ctrl` to go |
 | `Shift`+click a tab | Split with that tab |
 
@@ -127,6 +129,7 @@ The prefix is `Cmd+R`, then one key. `Esc` cancels.
 - **A sign-in page opened in your browser and the tab keeps loading.** The tab tried to go to a domain it may not open. Look at `~/Library/Logs/workhubme/blocked-navigation.log`, then add that domain under "Extra domains" when adding the tab (or tick "Sign in with Google" for Google). For a tab you already added, edit its `hosts` in `services.json` and restart.
 - **Stuck on a page you cannot leave?** `Cmd+R`, `p` goes back; `Cmd+R`, `h` goes to the tab's start page; `Cmd+R`, `c` signs the tab out, which helps when a page says your account has no access.
 - **A badge for another site.** If a site shows its count in the page title in its own way, type a short pattern with one group in "Unread badge" when adding the tab, for example `tickets: (\d+)`. Leave it empty for automatic, or type `off`. For a tab you already added, set `"badge": "tickets: (\\d+)"` in `services.json` and restart.
+- **The blur stopped covering part of WhatsApp.** WhatsApp changes its page now and then. Update the app (see [Updating](#updating)), or for a quick fix set your own selectors on that tab in `services.json`: `"blurSelectors": ["#pane-side [role=\"listitem\"]"]` (plain CSS selectors only, up to 10), then restart.
 - **Back up your setup.** Copy `services.json` and `settings.json` from `~/Library/Application Support/workhubme/`.
 - **Keep Electron current.** Electron is pinned to an exact version, so `npm update electron` changes nothing; see [Updating](#updating).
 
@@ -158,7 +161,7 @@ Nothing leaves your machine except what the sites you pin send and receive thems
 
 Worth reading before you trust it with real accounts.
 
-- Site tabs run with `sandbox` and `contextIsolation` and without Node integration. They have exactly one tiny preload, [`wheel-preload.js`](wheel-preload.js) (about ten lines), that runs in an isolated world and forwards only the amount of scrolling (two numbers) to the app for the swipe feature. It reads nothing else from the page and exposes nothing to it. The app does not change the pages you open. The one message a page's renderer can send is those two numbers; the app accepts it only from website tabs and the only thing it can do is switch tabs.
+- Site tabs run with `sandbox` and `contextIsolation` and without Node integration. They have exactly one tiny preload, [`wheel-preload.js`](wheel-preload.js) (about ten lines), that runs in an isolated world and forwards only the amount of scrolling (two numbers) to the app for the swipe feature. It reads nothing else from the page and exposes nothing to it. Apart from the optional blur stylesheet (CSS only), the app does not change the pages you open. The one message a page's renderer can send is those two numbers; the app accepts it only from website tabs and the only thing it can do is switch tabs.
 - Navigation and redirects of the page itself are limited to the tab's allowed hosts (HTTPS only). Anything else opens in your default browser and is logged.
 - Only notifications, clipboard write and fullscreen are granted to pages.
 - The terminal runs your login shell **with your privileges**. Its page is local, cannot navigate or open windows, and every message to it must come from that page's main frame, with sizes and types validated. Treat it like any other terminal.
@@ -172,7 +175,7 @@ Found a problem? See [SECURITY.md](SECURITY.md).
 Please read these. They are the part most READMEs skip.
 
 - **Independent and unofficial.** It is not affiliated with, endorsed by or sponsored by any site you pin. Product names such as WhatsApp or Gmail belong to their owners and appear here only to describe what you could pin. No logos are shipped.
-- **It is a browser window, nothing more.** It does not automate, scrape or modify pages, and it does not send messages for you. The only things it reads from a page are the amount of scrolling (for the optional swipe) and the page title (for unread badges). Neither is stored or sent anywhere.
+- **It is a browser window, nothing more.** It does not automate or scrape pages, and it does not send messages for you. It reads the amount of scrolling (for the optional swipe) and the page title (for unread badges), and only if you turn it on, it adds a stylesheet that blurs WhatsApp chats (appearance only, no script). None of this is stored or sent anywhere.
 - **User agent.** To let more sites accept the login, the app removes the `Electron` token from its user agent. That changes how your browser identifies itself. Some services may refuse or restrict it, and Google has blocked OAuth sign-in from embedded webviews since 2021 ([announcement](https://developers.googleblog.com/en/upcoming-security-changes-to-googles-oauth-20-authorization-endpoint-in-embedded-webviews/); it does not mention Electron, so whether it applies here is unclear). Google sign-in inside this app may therefore fail.
 - **Read each service's terms.** As an example, WhatsApp's terms of service (read in October 2026) restrict automated access, bulk messaging and non-personal use. This app does none of that, but you are responsible for how you use the services you pin. This is not legal advice.
 - **Free and staying that way.** MIT licence. No paid tier, no ads, no tracking, no donation prompts.
@@ -186,6 +189,7 @@ Please read these. They are the part most READMEs skip.
 - Downloads use Electron's default save dialog. Notification clicks do not focus the tab. No unread badges.
 - The interface comes in English, Bahasa Indonesia and Japanese. The Indonesian and Japanese texts were written without native-speaker review; corrections are welcome.
 - Two-finger swipe is experimental and not as smooth as native swiping: it switches the tab once your swipe passes a threshold instead of following your fingers, and scrolling a page sideways can also trigger it. It is off by default and never active on the terminal tab.
+- The blur is only a cover for your screen, not security: the messages are still in the page. It relies on selectors that can break when WhatsApp changes its page.
 - Badges only work for sites that show the count in the page title (WhatsApp and Gmail do; many others do not). A page can put any number in its own title, so treat a badge as a hint. Clicking a notification still does not open its tab.
 - The prefix (`Cmd+R`) and the other shortcuts cannot be changed yet; Settings has language, swipe and badges.
 - Unsigned, run from source. If you build and share your own `.app`, include Electron's `LICENSE` and Chromium's `LICENSES.chromium.html` from the Electron distribution.

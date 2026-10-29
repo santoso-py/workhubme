@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { isValidPattern } = require('./badge');
+const { isSafeSelector, MAX_SELECTORS } = require('./blur');
 
 const HOSTNAME = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
 const COLORS = ['#4ca25a', '#d93a31', '#3a63e0', '#8b3fe0', '#e8742c', '#1f9d8f', '#d6336c', '#7a5af8'];
@@ -99,6 +100,10 @@ function normalizeStored(raw) {
     Object.assign(entry, { url: url.href, hosts: [...new Set([url.hostname.toLowerCase(), ...hosts])] });
     if (typeof raw.partition === 'string' && /^[a-z0-9-]{1,40}$/.test(raw.partition)) entry.partition = raw.partition;
     if (raw.googleLogin === true) entry.googleLogin = true;
+    if (Array.isArray(raw.blurSelectors)) {
+      const selectors = raw.blurSelectors.filter(isSafeSelector).slice(0, MAX_SELECTORS);
+      if (selectors.length) entry.blurSelectors = selectors; // unsafe ones are dropped, never passed into a stylesheet
+    }
     if (raw.badge === 'off' || (typeof raw.badge === 'string' && raw.badge !== 'auto' && isValidPattern(raw.badge))) entry.badge = raw.badge; // anything else falls back to automatic
     return entry;
   } catch {

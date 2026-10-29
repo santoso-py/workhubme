@@ -63,6 +63,7 @@ Alasannya satu: berpindah antara lima atau enam tab dan sebuah terminal dengan c
 - **Tiga bahasa.** English, Bahasa Indonesia, dan 日本語, diganti di Pengaturan (`Cmd+,`). Bawaannya mengikuti bahasa sistem.
 - **Gesek dua jari (eksperimental, mati secara bawaan).** Gesek ke kanan untuk tab berikutnya, ke kiri untuk sebelumnya. Aktifkan di Pengaturan.
 - **Badge belum dibaca.** Angka di judul halaman seperti `(3) Chat` muncul di tab, dan totalnya di ikon Dock. WhatsApp dan Gmail langsung bekerja; untuk situs lain isi pola saat menambah tab, atau matikan per tab atau di Pengaturan.
+- **Blur chat WhatsApp (opsional).** Mengaburkan daftar chat dan pesan supaya sekilas melihat layar Anda tidak menampilkan apa pun; arahkan kursor ke satu item untuk membacanya. Nyalakan di Pengaturan atau dengan `Cmd+R`, `v`.
 - **Bantuan dan yang baru.** `Cmd+R`, `?` membuka panduan singkat, catatan rilis, dan tombol untuk mengecek pembaruan.
 - **Senyap.** Tanpa akun, tanpa telemetri, dan tanpa lalu lintas jaringan milik aplikasi sendiri, kecuali pengecekan pembaruan yang Anda mulai sendiri.
 
@@ -112,6 +113,7 @@ Prefix-nya `Cmd+R`, lalu satu tombol. `Esc` membatalkan.
 | `Cmd+R`, `c` | Keluar dari akun tab yang fokus (ada konfirmasi) |
 | `Cmd+R`, `,` atau `Cmd+,` | Pengaturan: bahasa, gesek, dan badge |
 | `Cmd+R`, `?` | Bantuan: panduan singkat, yang baru, cek pembaruan |
+| `Cmd+R`, `v` | Blur chat WhatsApp hidup atau mati |
 | Tahan `Ctrl`, tekan `Tab` | Pengalih; lepas `Ctrl` untuk pindah |
 | `Shift`+klik tab | Bagi layar dengan tab itu |
 
@@ -127,6 +129,7 @@ Prefix-nya `Cmd+R`, lalu satu tombol. `Esc` membatalkan.
 - **Halaman login terbuka di browser dan tab terus memuat.** Tab mencoba membuka domain yang tidak boleh dibukanya. Lihat `~/Library/Logs/workhubme/blocked-navigation.log`, lalu tambahkan domain itu di "Domain tambahan" saat menambah tab (atau centang "Login dengan Google" untuk Google). Untuk tab yang sudah ada, ubah `hosts`-nya di `services.json` lalu mulai ulang.
 - **Terjebak di halaman yang tidak bisa ditinggalkan?** `Cmd+R`, `p` untuk mundur; `Cmd+R`, `h` ke halaman awal tab; `Cmd+R`, `c` keluar dari akun tab, berguna saat halaman bilang akun Anda tidak punya akses.
 - **Badge untuk situs lain.** Kalau sebuah situs menampilkan jumlahnya di judul halaman dengan caranya sendiri, ketik pola pendek dengan satu grup di "Badge belum dibaca" saat menambah tab, misalnya `tickets: (\d+)`. Kosongkan untuk otomatis, atau ketik `off`. Untuk tab yang sudah ada, isi `"badge": "tickets: (\\d+)"` di `services.json` lalu mulai ulang.
+- **Blur tidak lagi menutupi sebagian WhatsApp.** WhatsApp sesekali mengubah halamannya. Perbarui aplikasi (lihat [Memperbarui](#memperbarui)), atau untuk perbaikan cepat isi selektor sendiri pada tab itu di `services.json`: `"blurSelectors": ["#pane-side [role=\"listitem\"]"]` (hanya selektor CSS biasa, maksimal 10), lalu mulai ulang.
 - **Cadangkan pengaturan Anda.** Salin `services.json` dan `settings.json` dari `~/Library/Application Support/workhubme/`.
 - **Jaga Electron tetap baru.** Electron dikunci pada versi eksak, jadi `npm update electron` tidak mengubah apa pun; lihat [Memperbarui](#memperbarui).
 
@@ -158,7 +161,7 @@ Tidak ada yang keluar dari komputer Anda selain yang dikirim dan diterima oleh s
 
 Layak dibaca sebelum Anda mempercayakan akun sungguhan.
 
-- Tab situs berjalan dengan `sandbox` dan `contextIsolation` serta tanpa integrasi Node. Mereka punya tepat satu preload kecil, [`wheel-preload.js`](wheel-preload.js) (sekitar sepuluh baris), yang berjalan di dunia terisolasi dan hanya meneruskan besar gulir (dua angka) ke aplikasi untuk fitur gesek. Ia tidak membaca hal lain dari halaman dan tidak membuka apa pun ke halaman. Aplikasi tidak mengubah halaman yang Anda buka. Satu-satunya pesan yang bisa dikirim renderer halaman adalah dua angka itu; aplikasi hanya menerimanya dari tab situs dan satu-satunya efeknya adalah berpindah tab.
+- Tab situs berjalan dengan `sandbox` dan `contextIsolation` serta tanpa integrasi Node. Mereka punya tepat satu preload kecil, [`wheel-preload.js`](wheel-preload.js) (sekitar sepuluh baris), yang berjalan di dunia terisolasi dan hanya meneruskan besar gulir (dua angka) ke aplikasi untuk fitur gesek. Ia tidak membaca hal lain dari halaman dan tidak membuka apa pun ke halaman. Selain stylesheet blur yang opsional (hanya CSS), aplikasi tidak mengubah halaman yang Anda buka. Satu-satunya pesan yang bisa dikirim renderer halaman adalah dua angka itu; aplikasi hanya menerimanya dari tab situs dan satu-satunya efeknya adalah berpindah tab.
 - Navigasi dan redirect halaman itu sendiri dibatasi ke host yang diizinkan untuk tab tersebut (hanya HTTPS). Selebihnya dibuka di browser bawaan dan dicatat.
 - Halaman hanya diberi izin notifikasi, tulis clipboard, dan layar penuh.
 - Terminal menjalankan shell login Anda **dengan hak akses Anda**. Halamannya lokal, tidak bisa berpindah halaman atau membuka jendela, dan setiap pesan ke terminal harus berasal dari frame utama halaman itu, dengan ukuran dan tipe yang divalidasi. Perlakukan seperti terminal lain.
@@ -172,7 +175,7 @@ Menemukan masalah? Lihat [SECURITY.md](SECURITY.md).
 Mohon dibaca. Ini bagian yang sering dilewatkan README lain.
 
 - **Independen dan tidak resmi.** Tidak berafiliasi, didukung, atau disponsori oleh situs mana pun yang Anda sematkan. Nama produk seperti WhatsApp atau Gmail milik pemiliknya masing-masing dan hanya disebut untuk menjelaskan apa yang bisa Anda sematkan. Tidak ada logo yang disertakan.
-- **Ini hanya jendela browser.** Tidak mengotomatisasi, mengambil data (scraping), atau mengubah halaman, dan tidak mengirim pesan atas nama Anda. Yang dibaca dari halaman hanya besar gulir (untuk gesek yang opsional) dan judul halaman (untuk badge belum dibaca). Keduanya tidak disimpan atau dikirim ke mana pun.
+- **Ini hanya jendela browser.** Tidak mengotomatisasi atau mengambil data (scraping) dari halaman, dan tidak mengirim pesan atas nama Anda. Yang dibaca dari halaman adalah besar gulir (untuk gesek yang opsional) dan judul halaman (untuk badge belum dibaca), dan hanya jika Anda menyalakannya, aplikasi menambahkan stylesheet yang mengaburkan chat WhatsApp (hanya tampilan, tanpa skrip). Semuanya tidak disimpan atau dikirim ke mana pun.
 - **User agent.** Supaya lebih banyak situs menerima login, aplikasi menghapus token `Electron` dari user agent-nya. Itu mengubah cara browser Anda memperkenalkan diri. Sebagian layanan bisa menolak atau membatasinya, dan Google memblokir sign-in OAuth dari webview tertanam sejak 2021 ([pengumuman](https://developers.googleblog.com/en/upcoming-security-changes-to-googles-oauth-20-authorization-endpoint-in-embedded-webviews/); pengumuman itu tidak menyebut Electron, jadi belum jelas apakah berlaku di sini). Karena itu login Google di dalam aplikasi ini bisa gagal.
 - **Baca syarat tiap layanan.** Sebagai contoh, ketentuan layanan WhatsApp (dibaca Oktober 2026) membatasi akses otomatis, pesan massal, dan penggunaan non-personal. Aplikasi ini tidak melakukan itu, tetapi Anda bertanggung jawab atas cara Anda memakai layanan yang disematkan. Ini bukan nasihat hukum.
 - **Gratis dan akan tetap begitu.** Lisensi MIT. Tanpa versi berbayar, tanpa iklan, tanpa pelacakan, tanpa ajakan donasi.
@@ -186,6 +189,7 @@ Mohon dibaca. Ini bagian yang sering dilewatkan README lain.
 - Unduhan memakai dialog simpan bawaan Electron. Klik notifikasi tidak memfokuskan tab. Tidak ada lencana pesan belum dibaca.
 - Antarmuka tersedia dalam English, Bahasa Indonesia, dan Jepang. Teks Indonesia dan Jepang ditulis tanpa ditinjau penutur asli; koreksi sangat diterima.
 - Gesek dua jari masih eksperimental dan tidak semulus gesek bawaan macOS: tab berpindah setelah gesekan melewati ambang, bukan mengikuti jari Anda, dan menggulir halaman ke samping juga bisa memicunya. Mati secara bawaan dan tidak pernah aktif di tab terminal.
+- Blur hanya penutup untuk layar Anda, bukan keamanan: pesan tetap ada di halaman. Ia bergantung pada selektor yang bisa rusak kalau WhatsApp mengubah halamannya.
 - Badge hanya bekerja untuk situs yang menampilkan jumlah di judul halaman (WhatsApp dan Gmail begitu; banyak yang lain tidak). Halaman bisa menaruh angka apa saja di judulnya sendiri, jadi anggap badge sebagai petunjuk. Mengeklik notifikasi masih belum membuka tab-nya.
 - Prefix (`Cmd+R`) dan pintasan lain belum bisa diubah; Pengaturan berisi bahasa, gesek, dan badge.
 - Tidak bertanda tangan, dijalankan dari source. Kalau Anda membuat dan membagikan `.app` sendiri, sertakan `LICENSE` Electron dan `LICENSES.chromium.html` Chromium dari distribusi Electron.

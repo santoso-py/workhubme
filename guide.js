@@ -9,6 +9,7 @@
     { keys: ['Cmd+R', 's', '1-9'], text: 'guide.split' },
     { keys: ['Ctrl', 'Tab'], text: 'guide.switcher', hold: true },
     { keys: ['Cmd+R', '?'], text: 'guide.help' },
+    { keys: ['Cmd+R', 'v'], text: 'guide.blur' },
     { keys: ['Cmd+,'], text: 'guide.settings' },
   ];
 

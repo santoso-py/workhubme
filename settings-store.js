@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { parseVersion } = require('./updates');
 
-const DEFAULTS = { language: null, swipe: false, swipeInvert: false, badges: true, dockBadge: true, lastSeenVersion: null };
+const DEFAULTS = { language: null, swipe: false, swipeInvert: false, badges: true, dockBadge: true, chatBlur: false, chatBlurLevel: 'medium', lastSeenVersion: null };
 const LANGUAGES = ['id', 'en', 'ja'];
 
 // Anything unknown or malformed falls back to the default; the file can be hand-edited.
@@ -15,6 +15,8 @@ function normalize(raw) {
     swipeInvert: input.swipeInvert === true,
     badges: input.badges !== false, // on unless explicitly switched off
     dockBadge: input.dockBadge !== false,
+    chatBlur: input.chatBlur === true,
+    chatBlurLevel: ['light', 'medium', 'strong'].includes(input.chatBlurLevel) ? input.chatBlurLevel : 'medium',
     lastSeenVersion: parseVersion(input.lastSeenVersion)?.join('.') ?? null, // set by the app, used for the "updated" notice
   };
 }
@@ -43,6 +45,8 @@ function merge(current, patch) {
     if (typeof patch.swipeInvert === 'boolean') next.swipeInvert = patch.swipeInvert;
     if (typeof patch.badges === 'boolean') next.badges = patch.badges;
     if (typeof patch.dockBadge === 'boolean') next.dockBadge = patch.dockBadge;
+    if (typeof patch.chatBlur === 'boolean') next.chatBlur = patch.chatBlur;
+    if (['light', 'medium', 'strong'].includes(patch.chatBlurLevel)) next.chatBlurLevel = patch.chatBlurLevel;
     if (parseVersion(patch.lastSeenVersion)) next.lastSeenVersion = parseVersion(patch.lastSeenVersion).join('.');
   }
   return next;
